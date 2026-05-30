@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全链路商业化预估模型 (投放+运营)</title>
+    <title>全链路商业化预估与沙盘系统 (真实波动完全体)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-        .chart-container { width: 100%; height: 350px; }
+        .chart-container { width: 100%; height: 380px; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -20,68 +20,77 @@
         .sticky-head-col { position: sticky; top: 0; left: 0; z-index: 40; background-color: #f1f5f9; }
         .data-bar { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* 隐藏输入框的箭头 */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .ad-input { width: 100%; background: transparent; border: 1px solid transparent; text-align: right; border-radius: 4px; padding: 2px 4px; outline: none; transition: all 0.2s; }
+        .ad-input { width: 100%; background: transparent; border: 1px solid transparent; text-align: right; border-radius: 4px; padding: 2px 4px; outline: none; transition: all 0.2s; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         .ad-input:hover { border-color: #cbd5e1; background: #fff; }
         .ad-input:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 1px #3b82f6; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 p-4 md:p-6">
 
-    <div class="max-w-[1600px] mx-auto space-y-4">
+    <div class="max-w-[1700px] mx-auto space-y-4">
         
         <!-- 全局顶部导航：模块切换 & 联动开关 -->
-        <div class="flex flex-col md:flex-row justify-between items-center bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6 gap-4">
-            <div class="bg-slate-100 p-1 rounded-xl inline-flex shadow-inner">
-                <button id="tab-btn-ads" onclick="switchTab('ads')" class="px-8 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm bg-white text-blue-600">
-                    📊 投放素材预估模型
+        <div class="flex flex-col md:flex-row justify-between items-center bg-white rounded-2xl shadow-sm border border-slate-100 p-3 mb-4 gap-4 sticky top-0 z-50">
+            <div class="bg-slate-100 p-1 rounded-xl flex gap-1 shadow-inner overflow-x-auto max-w-full">
+                <button id="tab-btn-ads" onclick="switchTab('ads')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm bg-white text-blue-600 whitespace-nowrap">
+                    一阶：投放素材测算
                 </button>
-                <button id="tab-btn-operation" onclick="switchTab('operation')" class="px-8 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800">
-                    📈 运营数据大盘预估
+                <button id="tab-btn-operation" onclick="switchTab('operation')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800 whitespace-nowrap">
+                    二阶：单批次衰减基准
+                </button>
+                <button id="tab-btn-product" onclick="switchTab('product')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800 whitespace-nowrap flex items-center gap-1">
+                    <span class="text-orange-500">🔥</span> 三阶：大盘真实沙盘(含波动)
                 </button>
             </div>
             
-            <label class="flex items-center gap-3 cursor-pointer bg-emerald-50 border border-emerald-200 px-5 py-2.5 rounded-xl text-emerald-800 font-bold hover:bg-emerald-100 transition-colors shadow-sm">
+            <label class="flex items-center gap-3 cursor-pointer bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-emerald-800 font-bold hover:bg-emerald-100 transition-colors shadow-sm whitespace-nowrap">
                 <input type="checkbox" id="syncToggle" onchange="toggleSync()" class="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500">
-                <span>🔗 开启投放与运营大盘实时联动</span>
-                <span class="text-xs font-normal text-emerald-600 bg-white px-2 py-0.5 rounded-full shadow-sm">Cost / Users 同步</span>
+                <span class="text-sm">开启全链数据贯通</span>
+                <span class="text-xs font-normal text-emerald-600 bg-white px-2 py-0.5 rounded-full shadow-sm hidden md:inline-block">投放 ➔ 基准 ➔ 沙盘</span>
             </label>
         </div>
 
         <!-- ==================== 视图 1：投放素材预估模型 ==================== -->
         <div id="view-ads" class="space-y-6 block">
-            
-            <!-- 投放图表区 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">各渠道消耗与新增获客分布</h2>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between">
+                        各渠道消耗与新增获客分布
+                        <span class="text-xs text-slate-400 font-normal">柱状图: 消耗 | 折线图: 新增量</span>
+                    </h2>
                     <div id="adSpendUserChart" class="chart-container"></div>
                 </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">各渠道注册成本(CPA)与付费成本(CPP)对比</h2>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between">
+                        各渠道获客成本 (CPA vs CPP)
+                        <span class="text-xs text-slate-400 font-normal">横向对比渠道质量</span>
+                    </h2>
                     <div id="adCostChart" class="chart-container"></div>
                 </div>
             </div>
 
-            <!-- 投放数据表 -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 overflow-hidden flex flex-col">
-                <div class="flex justify-between items-end mb-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-3">
                     <div>
-                        <h2 class="text-lg font-bold text-slate-800">多渠道买量计划明细 (支持行列合并与增删动态推演)</h2>
-                        <p class="text-xs text-slate-400 mt-1">直接点击表格内的数值即可修改，悬浮在计划栏可新增/删除素材计划。</p>
+                        <h2 class="text-lg font-bold text-slate-800">多渠道买量计划明细表</h2>
+                        <p class="text-xs text-slate-400 mt-1">悬浮于素材计划可增删行，修改数值自动重算衍生数据。</p>
                     </div>
+                    <button onclick="exportAdTableToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        导出买量排期预估表
+                    </button>
                 </div>
-                <div class="overflow-auto border border-slate-200 rounded-lg shadow-inner max-h-[700px]">
-                    <table class="w-full text-sm text-left whitespace-nowrap min-w-max bg-white">
+                <div class="overflow-auto border border-slate-200 rounded-lg shadow-inner max-h-[600px]">
+                    <table id="adMainTable" class="w-full text-sm text-left whitespace-nowrap min-w-max bg-white">
                         <thead class="text-xs text-slate-600">
                             <tr>
-                                <th class="px-3 py-3 border-b border-r sticky-head-col bg-slate-100 z-50 shadow-sm w-24">平台</th>
-                                <th class="px-3 py-3 border-b border-r sticky-head bg-slate-100 z-40 shadow-sm w-28" style="left: 96px;">渠道</th>
-                                <th class="px-3 py-3 border-b border-r sticky-head bg-slate-100 z-40 shadow-sm w-44" style="left: 208px;">素材计划</th>
+                                <th class="px-3 py-3 border-b border-r sticky-head-col bg-slate-100 z-50 shadow-sm w-20">平台</th>
+                                <th class="px-3 py-3 border-b border-r sticky-head bg-slate-100 z-40 shadow-sm w-24" style="left: 80px;">渠道</th>
+                                <th class="px-3 py-3 border-b border-r sticky-head bg-slate-100 z-40 shadow-sm w-44" style="left: 176px;">素材计划</th>
                                 
-                                <th class="px-3 py-2 border-b bg-amber-50 text-amber-800 sticky-head text-right w-28">总消耗(元) ✎</th>
+                                <th class="px-3 py-2 border-b bg-amber-50 text-amber-800 sticky-head text-right w-28">单日总消耗 ✎</th>
                                 <th class="px-3 py-2 border-b bg-amber-50 text-amber-800 sticky-head text-right w-24">eCPM ✎</th>
                                 <th class="px-3 py-2 border-b bg-slate-50 sticky-head text-right w-28">曝光量</th>
                                 <th class="px-3 py-2 border-b bg-amber-50 text-amber-800 sticky-head text-right w-24">CTR(%) ✎</th>
@@ -90,160 +99,213 @@
                                 <th class="px-3 py-2 border-b bg-slate-50 sticky-head text-right w-28">下载量</th>
                                 <th class="px-3 py-2 border-b bg-amber-50 text-amber-800 sticky-head text-right w-24">注册率(%) ✎</th>
                                 
-                                <th class="px-3 py-2 border-b border-l-2 border-l-slate-300 bg-emerald-50 text-emerald-800 sticky-head text-right font-bold w-28">新增用户</th>
-                                <th class="px-3 py-2 border-b bg-rose-50 text-rose-800 sticky-head text-right font-bold w-32">CPA(注册成本)</th>
+                                <th class="px-3 py-2 border-b border-l-2 border-l-slate-300 bg-emerald-50 text-emerald-800 sticky-head text-right font-bold w-28">单日新增</th>
+                                <th class="px-3 py-2 border-b bg-rose-50 text-rose-800 sticky-head text-right font-bold w-28">CPA成本</th>
                                 
-                                <th class="px-3 py-2 border-b border-l-2 border-l-slate-300 bg-amber-50 text-amber-800 sticky-head text-right w-28">初始付费率(%) ✎</th>
-                                <th class="px-3 py-2 border-b bg-purple-50 text-purple-800 sticky-head text-right font-bold w-28">付费用户</th>
-                                <th class="px-3 py-2 border-b bg-rose-50 text-rose-800 sticky-head text-right font-bold w-32">CPP(付费成本)</th>
+                                <th class="px-3 py-2 border-b border-l-2 border-l-slate-300 bg-amber-50 text-amber-800 sticky-head text-right w-28">初始付费率(%)✎</th>
+                                <th class="px-3 py-2 border-b bg-purple-50 text-purple-800 sticky-head text-right font-bold w-28">新增付费</th>
+                                <th class="px-3 py-2 border-b bg-rose-50 text-rose-800 sticky-head text-right font-bold w-28">CPP成本</th>
                             </tr>
                         </thead>
-                        <tbody id="adTableBody" class="divide-y divide-slate-100">
-                            <!-- JS 动态渲染 -->
-                        </tbody>
-                        <tfoot id="adTableFoot" class="bg-slate-100 font-bold sticky bottom-0 z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-                            <!-- JS 动态渲染汇总行 -->
-                        </tfoot>
+                        <tbody id="adTableBody" class="divide-y divide-slate-100"></tbody>
+                        <tfoot id="adTableFoot" class="bg-slate-100 font-bold sticky bottom-0 z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"></tfoot>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- ==================== 视图 2：运营数据大盘 ==================== -->
+        <!-- ==================== 视图 2：运营单批次衰减基准 ==================== -->
         <div id="view-operation" class="space-y-6 hidden">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-slate-900">运营数据预估模型 (全链路 ROI 计算版)</h1>
-                    <p class="text-slate-500 mt-1 text-sm">结合获客成本，推演完整的360天LTV演进趋势，并在数据看板中实时监测 ROI 表现。</p>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="exportToExcel()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        大盘全量明细导出
-                    </button>
-                </div>
-            </div>
-
             <!-- 动态参数输入面板 -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        预估核心参变量
-                        <span id="sync-badge" class="hidden text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full animate-pulse border border-emerald-200">✅ 联动开启，数据实时同步中</span>
+                        理论单日批次预估特征 (沙盘推演底座)
+                        <span id="sync-badge" class="hidden text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full animate-pulse border border-emerald-200">✅ 联动开启，基础新增特征已由投放模型提供</span>
                     </h2>
-                    <button onclick="calculateAndRender()" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm">
-                        应用参数并重算
+                    <button onclick="calculateAndRenderOp()" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm">
+                        应用底层参变量
                     </button>
                 </div>
                 
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <!-- Android Params -->
                     <div class="space-y-4 p-5 rounded-xl bg-green-50/50 border border-green-100/60" id="op-and-panel">
-                        <h3 class="font-semibold text-green-800 border-b border-green-200 pb-2 mb-3">Android 参数调优</h3>
+                        <h3 class="font-semibold text-green-800 border-b border-green-200 pb-2 mb-3">Android 生命周期衰减特征</h3>
                         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">获客总成本(元)🔗</label><input type="number" id="and_cost" value="100000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
-                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">新增用户数 🔗</label><input type="number" id="and_users" value="10000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
+                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">单日导量成本 🔗</label><input type="number" id="and_cost" value="100000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
+                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">单日新增量 🔗</label><input type="number" id="and_users" value="10000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
                             <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">初始付费率(%)🔗</label><input type="number" step="0.1" id="and_init_paid_rate" value="5.0" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
                             
-                            <div><label class="block text-[11px] font-medium text-green-700 mb-1">生命周期(天)</label><input type="number" id="and_lifecycle" value="180" class="op-input w-full rounded-md border-green-400 bg-green-50 font-bold focus:border-green-600 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-green-700 mb-1">理论生命期(天)</label><input type="number" id="and_lifecycle" value="180" class="op-input w-full rounded-md border-green-400 bg-green-50 font-bold sm:text-sm px-2.5 py-1 border"></div>
                             <div><label class="block text-[11px] font-medium text-amber-600 mb-1">前期分水岭(%)</label><input type="number" id="and_p_pct" value="20" class="op-input w-full rounded-md border-amber-300 bg-amber-50 sm:text-sm px-2.5 py-1 border"></div>
                             
                             <div><label class="block text-[11px] font-medium text-slate-600 mb-1">大盘ARPU</label><input type="number" step="0.1" id="and_init_arpu" value="2.4" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
                             <div><label class="block text-[11px] font-medium text-slate-600 mb-1">付费ARPU</label><input type="number" step="1" id="and_init_arppu" value="48" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
                             
-                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期留存斜率</label><input type="number" step="0.01" id="and_ret_decay" value="0.65" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
-                            <div><label class="block text-[11px] font-medium text-slate-500 mb-1">后期留存降幅</label><input type="text" id="and_late_ret_rate" readonly class="w-full rounded-md border-slate-200 bg-slate-100/70 sm:text-sm px-2.5 py-1 border"></div>
-                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期付费斜率</label><input type="number" step="0.01" id="and_pd_ret_decay" value="0.45" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
-                            <div><label class="block text-[11px] font-medium text-slate-500 mb-1">后期付费降幅</label><input type="text" id="and_late_pd_rate" readonly class="w-full rounded-md border-slate-200 bg-slate-100/70 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期留存衰减</label><input type="number" step="0.01" id="and_ret_decay" value="0.65" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-slate-500 mb-1">后期日降速</label><input type="text" id="and_late_ret_rate" readonly class="w-full rounded-md border-slate-200 bg-slate-100/70 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期付费衰减</label><input type="number" step="0.01" id="and_pd_ret_decay" value="0.45" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-slate-500 mb-1">后期付费降速</label><input type="text" id="and_late_pd_rate" readonly class="w-full rounded-md border-slate-200 bg-slate-100/70 sm:text-sm px-2.5 py-1 border"></div>
                         </div>
                     </div>
                     
                     <!-- iOS Params -->
                     <div class="space-y-4 p-5 rounded-xl bg-blue-50/50 border border-blue-100/60" id="op-ios-panel">
-                        <h3 class="font-semibold text-blue-800 border-b border-blue-200 pb-2 mb-3">iOS 参数调优</h3>
+                        <h3 class="font-semibold text-blue-800 border-b border-blue-200 pb-2 mb-3">iOS 生命周期衰减特征</h3>
                         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">获客总成本(元)🔗</label><input type="number" id="ios_cost" value="100000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
-                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">新增用户数 🔗</label><input type="number" id="ios_users" value="10000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
+                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">单日导量成本 🔗</label><input type="number" id="ios_cost" value="100000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
+                            <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">单日新增量 🔗</label><input type="number" id="ios_users" value="10000" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
                             <div class="bg-white rounded shadow-sm border border-slate-100 p-1"><label class="block text-xs font-bold text-emerald-600 mb-1">初始付费率(%)🔗</label><input type="number" step="0.1" id="ios_init_paid_rate" value="8.0" class="op-input w-full rounded-md border-emerald-300 focus:border-emerald-500 sm:text-sm px-2.5 py-1 border transition-colors"></div>
                             
-                            <div><label class="block text-[11px] font-medium text-blue-700 mb-1">生命周期(天)</label><input type="number" id="ios_lifecycle" value="240" class="op-input w-full rounded-md border-blue-400 bg-blue-50 font-bold sm:text-sm px-2.5 py-1 border text-blue-800"></div>
+                            <div><label class="block text-[11px] font-medium text-blue-700 mb-1">理论生命期(天)</label><input type="number" id="ios_lifecycle" value="240" class="op-input w-full rounded-md border-blue-400 bg-blue-50 font-bold sm:text-sm px-2.5 py-1 border text-blue-800"></div>
                             <div><label class="block text-[11px] font-medium text-amber-600 mb-1">前期分水岭(%)</label><input type="number" id="ios_p_pct" value="20" class="op-input w-full rounded-md border-amber-300 bg-amber-50 sm:text-sm px-2.5 py-1 border"></div>
                             
                             <div><label class="block text-[11px] font-medium text-slate-600 mb-1">大盘ARPU</label><input type="number" step="0.1" id="ios_init_arpu" value="4.8" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
                             <div><label class="block text-[11px] font-medium text-slate-600 mb-1">付费ARPU</label><input type="number" step="1" id="ios_init_arppu" value="60" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
                             
-                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期留存斜率</label><input type="number" step="0.01" id="ios_ret_decay" value="0.55" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期留存衰减</label><input type="number" step="0.01" id="ios_ret_decay" value="0.55" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
                             <div><label class="block text-[11px] font-medium text-slate-500 mb-1">后期留存降幅</label><input type="text" id="ios_late_ret_rate" readonly class="w-full rounded-md border-slate-200 bg-slate-100/70 sm:text-sm px-2.5 py-1 border"></div>
-                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期付费斜率</label><input type="number" step="0.01" id="ios_pd_ret_decay" value="0.35" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
+                            <div><label class="block text-[11px] font-medium text-slate-600 mb-1">前期付费衰减</label><input type="number" step="0.01" id="ios_pd_ret_decay" value="0.35" class="op-input w-full rounded-md border-slate-300 sm:text-sm px-2.5 py-1 border"></div>
                             <div><label class="block text-[11px] font-medium text-slate-500 mb-1">后期付费降幅</label><input type="text" id="ios_late_pd_rate" readonly class="w-full rounded-md border-slate-200 bg-slate-100/70 sm:text-sm px-2.5 py-1 border"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 运营图表区 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">活跃用户数演进趋势</h2>
-                    <div id="dauChart" class="chart-container"></div>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between">
+                        单批次活跃衰减 (纯理论基准)
+                    </h2>
+                    <div id="opDauChart" class="chart-container"></div>
                 </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">大盘累计营收演进趋势</h2>
-                    <div id="cumRevChart" class="chart-container"></div>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4">单批次累计营收与 ROI 极值</h2>
+                    <div id="opRevChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 视图 3：大盘真实沙盘(含波动) ==================== -->
+        <div id="view-product" class="space-y-6 hidden">
+            
+            <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl shadow-sm border border-orange-100 p-6">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-5 gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-orange-900 flex items-center gap-2">
+                            🔥 全生命周期产品演进沙盘 (蒙特卡洛波动模拟)
+                        </h2>
+                        <p class="text-orange-700 mt-1 text-sm">将单批次数据模型，按日历周期、排期计划以及<span class="font-bold underline text-red-600">随机噪音引擎</span>进行多维复合运算，透视最真实的后台 BI 数据。</p>
+                    </div>
+                    <button onclick="calculateProductSandBox()" class="bg-orange-600 hover:bg-orange-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-md transition-transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        推演全局大盘并生成波动
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+                    <div class="md:col-span-2 bg-white/80 rounded-xl p-3 shadow-sm border border-orange-100 space-y-3">
+                        <h4 class="text-xs font-bold text-slate-700 border-b border-orange-200 pb-1">排期与自然流控制</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="block text-[10px] font-bold text-orange-800 mb-1">开始首发日期</label><input type="date" id="prod_start_date" class="w-full bg-transparent border-b border-orange-300 outline-none text-slate-800 font-medium py-0.5 text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-orange-800 mb-1">买量持续期(天)</label><input type="number" id="prod_buy_days" value="60" class="w-full bg-transparent border-b border-orange-300 outline-none text-slate-800 font-bold py-0.5 text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-600 mb-1">停投自然新增(And)</label><input type="number" id="prod_nat_and" value="1000" class="w-full bg-transparent border-b border-orange-300 outline-none text-slate-800 font-medium py-0.5 text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-600 mb-1">停投自然新增(iOS)</label><input type="number" id="prod_nat_ios" value="500" class="w-full bg-transparent border-b border-orange-300 outline-none text-slate-800 font-medium py-0.5 text-xs"></div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-5 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-3 shadow-sm border border-indigo-100 relative overflow-hidden">
+                        <h4 class="text-xs font-bold text-indigo-800 border-b border-indigo-200 pb-1 flex items-center gap-1">
+                            🎲 真实世界波动率模拟引擎 (随机噪音幅度)
+                        </h4>
+                        <p class="text-[10px] text-indigo-500 mt-1 mb-2">每次点击推演将按此幅度上下随机波动每日大盘数据，模拟真实节假日及意外情况。</p>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-700 mb-1 flex justify-between">买量消耗与新增波动 <span>±%</span></label>
+                                <input type="range" id="vol_new" min="0" max="50" value="15" class="w-full accent-indigo-600" oninput="document.getElementById('vol_new_val').innerText=this.value+'%'">
+                                <div class="text-center text-indigo-900 font-bold font-mono text-sm mt-1" id="vol_new_val">15%</div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-700 mb-1 flex justify-between">大盘活跃(DAU)波动 <span>±%</span></label>
+                                <input type="range" id="vol_act" min="0" max="30" value="8" class="w-full accent-indigo-600" oninput="document.getElementById('vol_act_val').innerText=this.value+'%'">
+                                <div class="text-center text-indigo-900 font-bold font-mono text-sm mt-1" id="vol_act_val">8%</div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-700 mb-1 flex justify-between">大盘变现(营收)波动 <span>±%</span></label>
+                                <input type="range" id="vol_rev" min="0" max="40" value="12" class="w-full accent-indigo-600" oninput="document.getElementById('vol_rev_val').innerText=this.value+'%'">
+                                <div class="text-center text-indigo-900 font-bold font-mono text-sm mt-1" id="vol_rev_val">12%</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 数据看板 -->
+            <!-- 产品大盘图表区 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between items-center">
+                        真实后台日活大盘 (动态混合视窗)
+                        <span class="text-xs font-normal text-slate-400">支持底栏滑动缩放</span>
+                    </h2>
+                    <div id="prodDauChart" class="chart-container h-[400px]"></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between items-center">
+                        回本趋势与财务健康度追踪
+                        <span class="text-xs font-normal text-slate-400">包含 ROI 100% 辅助线</span>
+                    </h2>
+                    <div id="prodRoiChart" class="chart-container h-[400px]"></div>
+                </div>
+            </div>
+
+            <!-- 产品全局看板 -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 overflow-hidden flex flex-col h-[700px]">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">三阶：产品真实日历演进报表</h2>
+                        <p class="text-xs text-slate-500 mt-1">融合了排期与随机扰动的每日明细账本。</p>
+                    </div>
+                    <button onclick="exportProductToExcel()" class="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        导出全局财务与活跃演进表
+                    </button>
+                </div>
                 <div class="overflow-auto flex-1 border border-slate-200 rounded-lg shadow-inner">
                     <table class="w-full text-sm text-left whitespace-nowrap min-w-max bg-white">
                         <thead class="text-xs text-slate-600">
                             <tr>
-                                <th rowspan="2" class="px-4 py-3 border-b border-r sticky-head-col bg-slate-50 z-50">周期</th>
-                                <th colspan="8" class="px-4 py-2 border-b border-r text-center bg-purple-50 text-purple-800 sticky-head z-40">双端大盘汇总 (新增ROI测算)</th>
-                                <th colspan="9" class="px-4 py-2 border-b border-r text-center bg-green-50 text-green-800 sticky-head z-40">Android 预测</th>
-                                <th colspan="9" class="px-4 py-2 border-b text-center bg-blue-50 text-blue-800 sticky-head z-40">iOS 预测</th>
+                                <th rowspan="2" class="px-3 py-3 border-b border-r sticky-head-col bg-slate-50 z-50">日历日期</th>
+                                <th rowspan="2" class="px-2 py-3 border-b border-r sticky-head bg-slate-50 z-40 text-center w-16" style="left:100px;">天数</th>
+                                <th colspan="6" class="px-4 py-2 border-b border-r text-center bg-orange-50 text-orange-900 sticky-head z-40">全盘总汇 (活跃蓄水 & 财务回本)</th>
+                                <th colspan="3" class="px-4 py-2 border-b border-r text-center bg-green-50 text-green-800 sticky-head z-40">Android 模块</th>
+                                <th colspan="3" class="px-4 py-2 border-b text-center bg-blue-50 text-blue-800 sticky-head z-40">iOS 模块</th>
                             </tr>
                             <tr>
-                                <!-- 大盘 -->
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head w-32 z-40">总活跃</th>
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head w-28 z-40">总付费用户</th>
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head z-40">综合付费率</th>
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head w-28 z-40">综合ARPU</th>
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head w-32 z-40">总当日营收</th>
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head text-purple-700 font-bold z-40">综合LTV</th>
-                                <th class="px-3 py-2 border-b bg-purple-50/50 sticky-head font-bold z-40 text-rose-700 border-l-2 border-l-purple-200 shadow-[inset_2px_0_0_rgba(0,0,0,0.05)]">综合ROI</th>
-                                <th class="px-3 py-2 border-b border-r bg-purple-50/50 sticky-head font-bold z-40">LTV倍率</th>
-                                <!-- And -->
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head z-40">留存</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head w-28 z-40">活跃</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head z-40">付费率</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head w-24 z-40">付费人数</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head w-28 z-40">付费ARPU</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head w-32 z-40">日营收</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head text-green-700 z-40">累计LTV</th>
-                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head font-bold z-40 text-rose-700 border-l-2 border-l-green-200 shadow-[inset_2px_0_0_rgba(0,0,0,0.05)]">Android ROI</th>
-                                <th class="px-3 py-2 border-b border-r bg-green-50/50 sticky-head font-bold z-40">倍率</th>
-                                <!-- iOS -->
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head z-40">留存</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head w-28 z-40">活跃</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head z-40">付费率</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head w-24 z-40">付费人数</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head w-28 z-40">付费ARPU</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head w-32 z-40">日营收</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head text-blue-700 z-40">累计LTV</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head font-bold z-40 text-rose-700 border-l-2 border-l-blue-200 shadow-[inset_2px_0_0_rgba(0,0,0,0.05)]">iOS ROI</th>
-                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head font-bold z-40">倍率</th>
+                                <th class="px-3 py-2 border-b bg-orange-50/50 sticky-head w-24 z-40 font-bold">当日新增</th>
+                                <th class="px-3 py-2 border-b bg-orange-50/50 sticky-head w-28 z-40 font-bold text-orange-700">大盘总 DAU</th>
+                                <th class="px-3 py-2 border-b bg-orange-50/50 sticky-head w-28 z-40">当日流水收入</th>
+                                <th class="px-3 py-2 border-b bg-orange-50/50 sticky-head w-32 z-40 text-rose-600 border-l-2 shadow-[inset_2px_0_0_rgba(0,0,0,0.05)]">累计总耗资</th>
+                                <th class="px-3 py-2 border-b bg-orange-50/50 sticky-head w-32 z-40 font-bold text-emerald-600">累计总流水</th>
+                                <th class="px-3 py-2 border-b border-r bg-orange-50/50 sticky-head font-black z-40 text-red-600 bg-red-50/30">实盘 ROI</th>
+                                
+                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head w-24 z-40">And DAU</th>
+                                <th class="px-3 py-2 border-b bg-green-50/50 sticky-head z-40 text-green-700">And 累计流水</th>
+                                <th class="px-3 py-2 border-b border-r bg-green-50/50 sticky-head font-bold z-40">And ROI</th>
+                                
+                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head w-24 z-40">iOS DAU</th>
+                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head z-40 text-blue-700">iOS 累计流水</th>
+                                <th class="px-3 py-2 border-b bg-blue-50/50 sticky-head font-bold z-40">iOS ROI</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
+                        <tbody id="prodTableBody" class="divide-y divide-slate-100 font-mono"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗通知 -->
+    <!-- 弹窗 -->
     <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl font-medium transition-all duration-300 opacity-0 scale-95 pointer-events-none z-50 flex items-center gap-3">
         <span class="bg-emerald-500 rounded-full w-6 h-6 flex items-center justify-center text-sm">✓</span>
         <span id="toast-msg">状态更新</span>
@@ -251,9 +313,12 @@
 
     <script>
         // ==========================================
-        // 核心态与通用函数
+        // 全局基础配置与工具
         // ==========================================
         let isSyncEnabled = false;
+        let opData = [];      
+        let productData = []; 
+        const TOTAL_DAYS = 360;
 
         const fmtM = (v) => v.toFixed(2);
         const fmtI = (v) => Math.round(v).toLocaleString();
@@ -270,52 +335,68 @@
             }, 3000);
         }
 
+        document.getElementById('prod_start_date').value = new Date().toISOString().split('T')[0];
+
         function toggleSync() {
             isSyncEnabled = document.getElementById('syncToggle').checked;
-            
-            // 锁定或解锁运营大盘的核心关联输入框
             const linkedInputs = ['and_users', 'and_init_paid_rate', 'and_cost', 'ios_users', 'ios_init_paid_rate', 'ios_cost'];
             linkedInputs.forEach(id => {
                 const el = document.getElementById(id);
-                el.readOnly = isSyncEnabled;
-                if(isSyncEnabled) {
-                    el.classList.add('bg-emerald-50', 'text-emerald-700', 'cursor-not-allowed', 'shadow-inner');
-                } else {
-                    el.classList.remove('bg-emerald-50', 'text-emerald-700', 'cursor-not-allowed', 'shadow-inner');
+                if(el) {
+                    el.readOnly = isSyncEnabled;
+                    if(isSyncEnabled) el.classList.add('bg-emerald-50', 'text-emerald-700', 'cursor-not-allowed', 'shadow-inner');
+                    else el.classList.remove('bg-emerald-50', 'text-emerald-700', 'cursor-not-allowed', 'shadow-inner');
                 }
             });
 
             const badge = document.getElementById('sync-badge');
-            if(isSyncEnabled) {
-                badge.classList.remove('hidden');
-                document.getElementById('op-and-panel').classList.add('ring-2', 'ring-emerald-400');
-                document.getElementById('op-ios-panel').classList.add('ring-2', 'ring-emerald-400');
-                showToast("已开启联动！投放模型数据将覆盖运营大盘");
-                syncDataToOperation();
-            } else {
-                badge.classList.add('hidden');
-                document.getElementById('op-and-panel').classList.remove('ring-2', 'ring-emerald-400');
-                document.getElementById('op-ios-panel').classList.remove('ring-2', 'ring-emerald-400');
-                showToast("已解除联动，运营大盘可独立修改参数");
+            if(badge) {
+                if(isSyncEnabled) {
+                    badge.classList.remove('hidden');
+                    showToast("全链贯通！投放引擎已接管基准参数");
+                    triggerFullChainUpdate();
+                } else {
+                    badge.classList.add('hidden');
+                    showToast("联动解除，二阶基准参数可独立推演");
+                }
+            }
+        }
+
+        function safeResize(chartDict) {
+            Object.values(chartDict).forEach(c => { if(c) c.resize(); });
+        }
+
+        function switchTab(tab) {
+            ['ads', 'operation', 'product'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                let btn = document.getElementById(`tab-btn-${t}`);
+                if(btn) {
+                    btn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm', 'text-orange-600');
+                    btn.classList.add('text-slate-600');
+                }
+            });
+            
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            let activeBtn = document.getElementById(`tab-btn-${tab}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-600');
+                if(tab === 'product') {
+                    activeBtn.classList.add('bg-white', 'text-orange-600', 'shadow-sm');
+                    setTimeout(() => safeResize(prodCharts), 100);
+                } else {
+                    activeBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+                    setTimeout(() => tab === 'ads' ? safeResize(adCharts) : safeResize(opCharts), 100);
+                }
             }
         }
 
         // ==========================================
-        // 模块 1：投放素材预估模型 (Ad Placement Engine)
+        // 阶一：投放素材引擎 (精简逻辑保留核心)
         // ==========================================
         const adConfig = {
-            platforms: [
-                { id: 'and', name: 'Android', color: 'green-600', bg: 'bg-green-50', hover: 'hover:bg-green-100', headBg: 'bg-green-100' },
-                { id: 'ios', name: 'iOS', color: 'blue-600', bg: 'bg-blue-50', hover: 'hover:bg-blue-100', headBg: 'bg-blue-100' }
-            ],
-            channels: [
-                { id: 'gdt', name: '广点通' },
-                { id: 'jl', name: '巨量引擎' },
-                { id: 'xx', name: '新兴渠道' }
-            ],
-            initPlansCount: 2
+            platforms: [ { id: 'and', name: 'Android', bg: 'bg-green-50' }, { id: 'ios', name: 'iOS', bg: 'bg-blue-50' } ],
+            channels: [ { id: 'gdt', name: '广点通' }, { id: 'jl', name: '巨量引擎' }, { id: 'xx', name: '新兴渠道' } ]
         };
-
         let adData = {};
         
         function initAdData() {
@@ -323,583 +404,448 @@
                 adData[p.id] = {};
                 adConfig.channels.forEach(c => {
                     adData[p.id][c.id] = [];
-                    for(let i=1; i<=adConfig.initPlansCount; i++) {
-                        const baseSpend = 5000 + Math.random() * 5000;
-                        const isIos = p.id === 'ios';
+                    for(let i=1; i<=2; i++) {
                         adData[p.id][c.id].push({
-                            name: `素材计划 ${i}`,
-                            spend: baseSpend,
-                            ecpm: isIos ? 45 : 30,
-                            ctr: 0.015,
-                            downRate: 0.8,
-                            regRate: 0.8,
-                            payRate: isIos ? 0.08 : 0.05
+                            name: `素材划 ${i}`, spend: 8000, ecpm: p.id === 'ios' ? 45 : 30, ctr: 0.015,
+                            downRate: 0.8, regRate: 0.8, payRate: p.id === 'ios' ? 0.08 : 0.05
                         });
                     }
                 });
             });
-            calculateAllAdMetrics();
         }
 
-        function addAdMaterial(pId, cId) {
-            const arr = adData[pId][cId];
-            const isIos = pId === 'ios';
-            arr.push({
-                name: `新增素材 ${arr.length + 1}`,
-                spend: 5000, ecpm: isIos ? 45 : 30, ctr: 0.015,
-                downRate: 0.8, regRate: 0.8, payRate: isIos ? 0.08 : 0.05
-            });
-            calculateAllAdMetrics();
-        }
+        function calculateAds() {
+            let globalTotals = { spend: 0, newUsers: 0, paidUsers: 0 };
+            let pTotals = { and: { spend:0, newUsers:0, paidUsers:0 }, ios: { spend:0, newUsers:0, paidUsers:0 } };
 
-        function deleteAdMaterial(pId, cId, index) {
-            const arr = adData[pId][cId];
-            if (arr.length <= 1) {
-                showToast("⚠️ 每个渠道至少需要保留一条投放计划！");
-                return;
-            }
-            arr.splice(index, 1);
-            calculateAllAdMetrics();
-        }
-
-        function calculateAllAdMetrics() {
             adConfig.platforms.forEach(p => {
                 adConfig.channels.forEach(c => {
                     adData[p.id][c.id].forEach(item => {
                         item.impressions = (item.spend / item.ecpm) * 1000 || 0;
                         item.clicks = item.impressions * item.ctr;
-                        item.downloads = item.clicks * item.downRate;
-                        item.newUsers = item.downloads * item.regRate;
-                        item.cpa = item.newUsers > 0 ? item.spend / item.newUsers : 0;
+                        item.newUsers = item.clicks * item.downRate * item.regRate;
                         item.paidUsers = item.newUsers * item.payRate;
+                        item.cpa = item.newUsers > 0 ? item.spend / item.newUsers : 0;
                         item.cpp = item.paidUsers > 0 ? item.spend / item.paidUsers : 0;
+                        
+                        globalTotals.spend += item.spend; globalTotals.newUsers += item.newUsers; globalTotals.paidUsers += item.paidUsers;
+                        pTotals[p.id].spend += item.spend; pTotals[p.id].newUsers += item.newUsers; pTotals[p.id].paidUsers += item.paidUsers;
                     });
                 });
             });
+            window.adTotals = { pTotals, globalTotals };
             renderAdTable();
             renderAdCharts();
-            
-            // 只要数值变动，且联动开启，即刻同步并重算大盘
-            if(isSyncEnabled) {
-                syncDataToOperation();
-            }
         }
 
-        function updateAdInput(platform, channel, index, field, value) {
-            let val = parseFloat(value);
-            if (isNaN(val) || val < 0) val = 0;
-            if (['ctr', 'downRate', 'regRate', 'payRate'].includes(field)) val = val / 100;
-            adData[platform][channel][index][field] = val;
-            calculateAllAdMetrics();
+        function updateAdInput(p, c, idx, field, val) {
+            let v = parseFloat(val);
+            if (isNaN(v) || v < 0) v = 0;
+            if (['ctr', 'downRate', 'regRate', 'payRate'].includes(field)) v = v / 100;
+            adData[p][c][idx][field] = v;
+            triggerFullChainUpdate(); 
+        }
+
+        function addAdMaterial(p, c) {
+            adData[p][c].push({ name: `新增计划`, spend: 5000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 });
+            triggerFullChainUpdate();
+        }
+        function deleteAdMaterial(p, c, idx) {
+            if (adData[p][c].length <= 1) return showToast("⚠️ 保留至少一条！");
+            adData[p][c].splice(idx, 1);
+            triggerFullChainUpdate();
         }
 
         function renderAdTable() {
             const tbody = document.getElementById('adTableBody');
-            const tfoot = document.getElementById('adTableFoot');
+            if(!tbody) return;
             let html = '';
-            
-            let globalTotals = { spend: 0, newUsers: 0, paidUsers: 0 };
-            let pTotals = { and: { spend:0, newUsers:0, paidUsers:0 }, ios: { spend:0, newUsers:0, paidUsers:0 } };
-
             adConfig.platforms.forEach(p => {
-                let pRowSpan = 1; // 给平台小计留1行
-                adConfig.channels.forEach(c => pRowSpan += adData[p.id][c.id].length + 1); // 素材数 + 渠道小计
-
+                let pRowSpan = 1; adConfig.channels.forEach(c => pRowSpan += adData[p.id][c.id].length + 1);
                 adConfig.channels.forEach((c, cIdx) => {
-                    let cRowSpan = adData[p.id][c.id].length + 1; // 素材数 + 渠道小计
                     let cTotals = { spend:0, newUsers:0, paidUsers:0 };
-
                     adData[p.id][c.id].forEach((item, iIdx) => {
-                        globalTotals.spend += item.spend; globalTotals.newUsers += item.newUsers; globalTotals.paidUsers += item.paidUsers;
-                        pTotals[p.id].spend += item.spend; pTotals[p.id].newUsers += item.newUsers; pTotals[p.id].paidUsers += item.paidUsers;
                         cTotals.spend += item.spend; cTotals.newUsers += item.newUsers; cTotals.paidUsers += item.paidUsers;
-
-                        html += `<tr class="hover:bg-slate-50 transition-colors group">`;
+                        html += `<tr class="hover:bg-slate-50 group font-mono">`;
+                        if (cIdx === 0 && iIdx === 0) html += `<td rowspan="${pRowSpan}" class="px-3 py-2 border-b border-r sticky-col ${p.bg} font-sans font-bold text-center align-middle z-20 w-20" style="left:0;">${p.name}</td>`;
+                        if (iIdx === 0) html += `<td rowspan="${adData[p.id][c.id].length + 1}" class="px-3 py-2 border-b border-r sticky-col bg-white font-sans font-medium text-center align-middle z-20 w-24" style="left:80px;">${c.name}</td>`;
                         
-                        if (cIdx === 0 && iIdx === 0) {
-                            html += `<td rowspan="${pRowSpan}" class="px-3 py-2 border-b border-r sticky-col ${p.bg} text-${p.color} font-bold text-center align-middle z-20 w-24" style="left:0;">${p.name}</td>`;
-                        }
-                        if (iIdx === 0) {
-                            html += `<td rowspan="${cRowSpan}" class="px-3 py-2 border-b border-r sticky-col bg-white font-medium text-center align-middle z-20 w-28" style="left:96px;">${c.name}</td>`;
-                        }
-
-                        const idPrefix = `'${p.id}', '${c.id}', ${iIdx}`;
+                        const prf = `'${p.id}', '${c.id}', ${iIdx}`;
                         html += `
-                            <td class="px-3 py-1 border-b border-r sticky-col bg-white z-20 w-44" style="left:208px;">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-slate-600 truncate">${item.name}</span>
-                                    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onclick="addAdMaterial('${p.id}','${c.id}')" title="新增素材计划" class="text-emerald-500 bg-emerald-50 hover:bg-emerald-200 px-1.5 py-0.5 rounded shadow-sm">+</button>
-                                        <button onclick="deleteAdMaterial('${p.id}','${c.id}',${iIdx})" title="删除此计划" class="text-rose-500 bg-rose-50 hover:bg-rose-200 px-1.5 py-0.5 rounded shadow-sm">-</button>
-                                    </div>
-                                </div>
+                            <td class="px-3 py-1 border-b border-r sticky-col bg-white z-20 w-44 font-sans" style="left:176px;">
+                                <div class="flex items-center justify-between"><span class="text-slate-600 truncate">${item.name}</span>
+                                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="addAdMaterial('${p.id}','${c.id}')" class="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">+</button>
+                                    <button onclick="deleteAdMaterial('${p.id}','${c.id}',${iIdx})" class="text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded">-</button>
+                                </div></div>
                             </td>
-                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="100" class="ad-input" value="${item.spend.toFixed(0)}" onchange="updateAdInput(${idPrefix}, 'spend', this.value)"></td>
-                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input" value="${item.ecpm.toFixed(2)}" onchange="updateAdInput(${idPrefix}, 'ecpm', this.value)"></td>
+                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="100" class="ad-input" value="${item.spend.toFixed(0)}" onchange="updateAdInput(${prf},'spend',this.value)"></td>
+                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input" value="${item.ecpm.toFixed(2)}" onchange="updateAdInput(${prf},'ecpm',this.value)"></td>
                             <td class="px-3 py-2 border-b text-right text-slate-500">${fmtI(item.impressions)}</td>
-                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="0.1" class="ad-input" value="${fmtP(item.ctr)}" onchange="updateAdInput(${idPrefix}, 'ctr', this.value)"></td>
+                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="0.1" class="ad-input" value="${fmtP(item.ctr)}" onchange="updateAdInput(${prf},'ctr',this.value)"></td>
                             <td class="px-3 py-2 border-b text-right text-slate-500">${fmtI(item.clicks)}</td>
-                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input" value="${fmtP(item.downRate)}" onchange="updateAdInput(${idPrefix}, 'downRate', this.value)"></td>
-                            <td class="px-3 py-2 border-b text-right text-slate-500">${fmtI(item.downloads)}</td>
-                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input" value="${fmtP(item.regRate)}" onchange="updateAdInput(${idPrefix}, 'regRate', this.value)"></td>
+                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input" value="${fmtP(item.downRate)}" onchange="updateAdInput(${prf},'downRate',this.value)"></td>
+                            <td class="px-3 py-2 border-b text-right text-slate-500">${fmtI(item.clicks*item.downRate)}</td>
+                            <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input" value="${fmtP(item.regRate)}" onchange="updateAdInput(${prf},'regRate',this.value)"></td>
                             <td class="px-3 py-2 border-b border-l-2 border-l-slate-300 bg-emerald-50/50 text-right font-bold text-emerald-700">${fmtI(item.newUsers)}</td>
                             <td class="px-3 py-2 border-b bg-rose-50/50 text-right font-medium text-rose-600">¥${fmtM(item.cpa)}</td>
-                            <td class="px-2 py-1 border-b border-l-2 border-l-slate-300 bg-amber-50/30"><input type="number" step="0.1" class="ad-input text-purple-700 font-bold" value="${fmtP(item.payRate)}" onchange="updateAdInput(${idPrefix}, 'payRate', this.value)"></td>
+                            <td class="px-2 py-1 border-b border-l-2 border-l-slate-300 bg-amber-50/30"><input type="number" step="0.1" class="ad-input text-purple-700 font-bold" value="${fmtP(item.payRate)}" onchange="updateAdInput(${prf},'payRate',this.value)"></td>
                             <td class="px-3 py-2 border-b bg-purple-50/50 text-right font-bold text-purple-700">${fmtI(item.paidUsers)}</td>
                             <td class="px-3 py-2 border-b bg-rose-50/50 text-right font-medium text-rose-600">¥${fmtM(item.cpp)}</td>
                         </tr>`;
                     });
-                    
-                    // 渠道小计行
-                    let cCpa = cTotals.newUsers > 0 ? cTotals.spend / cTotals.newUsers : 0;
-                    let cCpp = cTotals.paidUsers > 0 ? cTotals.spend / cTotals.paidUsers : 0;
-                    let cPayRate = cTotals.newUsers > 0 ? cTotals.paidUsers / cTotals.newUsers : 0;
                     html += `
-                        <tr class="bg-slate-50/80 font-medium text-slate-700">
-                            <td class="px-3 py-2 border-b border-r sticky-col bg-slate-50/80 z-20 text-center" style="left:208px;">${c.name} (小计)</td>
-                            <td class="px-3 py-2 border-b text-right">¥${fmtI(cTotals.spend)}</td>
-                            <td colspan="7" class="px-3 py-2 border-b"></td>
-                            <td class="px-3 py-2 border-b border-l-2 border-l-slate-300 text-right text-emerald-600">${fmtI(cTotals.newUsers)}</td>
-                            <td class="px-3 py-2 border-b text-right text-rose-500">¥${fmtM(cCpa)}</td>
-                            <td class="px-3 py-2 border-b border-l-2 border-l-slate-300 text-right text-purple-600">${fmtP(cPayRate)}%</td>
-                            <td class="px-3 py-2 border-b text-right text-purple-600">${fmtI(cTotals.paidUsers)}</td>
-                            <td class="px-3 py-2 border-b text-right text-rose-500">¥${fmtM(cCpp)}</td>
-                        </tr>
-                    `;
+                        <tr class="bg-slate-50/80 font-bold text-slate-700 font-sans">
+                            <td class="px-3 py-2 border-b border-r sticky-col z-20 text-center text-xs" style="left:176px;">${c.name} (小计)</td>
+                            <td class="px-3 py-2 border-b text-right font-mono">¥${fmtI(cTotals.spend)}</td><td colspan="7" class="border-b"></td>
+                            <td class="px-3 py-2 border-b border-l-2 border-l-slate-300 text-right text-emerald-600 font-mono">${fmtI(cTotals.newUsers)}</td>
+                            <td class="px-3 py-2 border-b text-right text-rose-500 font-mono">¥${fmtM(cTotals.newUsers>0?cTotals.spend/cTotals.newUsers:0)}</td>
+                            <td class="px-3 py-2 border-b border-l-2 border-l-slate-300 text-right text-purple-600 font-mono">${fmtP(cTotals.newUsers>0?cTotals.paidUsers/cTotals.newUsers:0)}%</td>
+                            <td class="px-3 py-2 border-b text-right text-purple-600 font-mono">${fmtI(cTotals.paidUsers)}</td>
+                            <td class="px-3 py-2 border-b text-right text-rose-500 font-mono">¥${fmtM(cTotals.paidUsers>0?cTotals.spend/cTotals.paidUsers:0)}</td>
+                        </tr>`;
                 });
-
-                // 平台汇总行 (跨越渠道和计划列)
-                let pCpa = pTotals[p.id].newUsers > 0 ? pTotals[p.id].spend / pTotals[p.id].newUsers : 0;
-                let pCpp = pTotals[p.id].paidUsers > 0 ? pTotals[p.id].spend / pTotals[p.id].paidUsers : 0;
-                let pPayRate = pTotals[p.id].newUsers > 0 ? pTotals[p.id].paidUsers / pTotals[p.id].newUsers : 0;
-                html += `
-                    <tr class="${p.headBg} font-bold text-${p.color} border-b-2 border-slate-300">
-                        <td colspan="2" class="px-3 py-2 border-r sticky-col ${p.headBg} z-20 text-center" style="left:96px;">【${p.name} 平台汇总】</td>
-                        <td class="px-3 py-2 text-right">¥${fmtI(pTotals[p.id].spend)}</td>
-                        <td colspan="7"></td>
-                        <td class="px-3 py-2 border-l-2 border-l-slate-300 text-right">${fmtI(pTotals[p.id].newUsers)}</td>
-                        <td class="px-3 py-2 text-right">¥${fmtM(pCpa)}</td>
-                        <td class="px-3 py-2 border-l-2 border-l-slate-300 text-right">${fmtP(pPayRate)}%</td>
-                        <td class="px-3 py-2 text-right">${fmtI(pTotals[p.id].paidUsers)}</td>
-                        <td class="px-3 py-2 text-right">¥${fmtM(pCpp)}</td>
-                    </tr>
-                `;
             });
             tbody.innerHTML = html;
-
-            // 渲染底部总计
-            const globalCpa = globalTotals.newUsers > 0 ? globalTotals.spend / globalTotals.newUsers : 0;
-            const globalCpp = globalTotals.paidUsers > 0 ? globalTotals.spend / globalTotals.paidUsers : 0;
-            const globalPayRate = globalTotals.newUsers > 0 ? globalTotals.paidUsers / globalTotals.newUsers : 0;
-            
-            tfoot.innerHTML = `
-                <tr>
-                    <td colspan="3" class="px-3 py-3 border-r text-center bg-slate-800 text-white sticky-col z-40" style="left:0;">双端大盘总计</td>
-                    <td class="px-3 py-3 text-right bg-slate-800 text-amber-300">¥${fmtI(globalTotals.spend)}</td>
-                    <td colspan="7" class="px-3 py-3 bg-slate-800"></td>
-                    <td class="px-3 py-3 border-l-2 border-l-slate-600 text-right bg-slate-800 text-emerald-400">${fmtI(globalTotals.newUsers)}</td>
-                    <td class="px-3 py-3 text-right bg-slate-800 text-rose-300">¥${fmtM(globalCpa)}</td>
-                    <td class="px-3 py-3 border-l-2 border-l-slate-600 text-right bg-slate-800 text-purple-300">${fmtP(globalPayRate)}%</td>
-                    <td class="px-3 py-3 text-right bg-slate-800 text-purple-300">${fmtI(globalTotals.paidUsers)}</td>
-                    <td class="px-3 py-3 text-right bg-slate-800 text-rose-300">¥${fmtM(globalCpp)}</td>
-                </tr>
-            `;
-
-            window.adTotals = { pTotals, globalTotals };
         }
 
-        // 投放图表
         let adCharts = {};
         function initAdCharts() {
-            adCharts.spendUser = echarts.init(document.getElementById('adSpendUserChart'));
-            adCharts.cost = echarts.init(document.getElementById('adCostChart'));
+            const el1 = document.getElementById('adSpendUserChart');
+            const el2 = document.getElementById('adCostChart');
+            if(el1) adCharts.c1 = echarts.init(el1);
+            if(el2) adCharts.c2 = echarts.init(el2);
         }
-
         function renderAdCharts() {
-            let xAxisData = [];
-            let spendData = [];
-            let newUserData = [];
-            let cpaData = [];
-            let cppData = [];
-
-            adConfig.platforms.forEach(p => {
-                adConfig.channels.forEach(c => {
-                    xAxisData.push(`${p.name}\n${c.name}`);
-                    let tSpend = 0, tNew = 0, tPaid = 0;
-                    adData[p.id][c.id].forEach(i => { tSpend += i.spend; tNew += i.newUsers; tPaid += i.paidUsers; });
-                    spendData.push(tSpend);
-                    newUserData.push(tNew);
-                    cpaData.push(tNew > 0 ? tSpend / tNew : 0);
-                    cppData.push(tPaid > 0 ? tSpend / tPaid : 0);
-                });
-            });
-
-            const commonOpts = { tooltip: { trigger: 'axis' }, legend: { top: 0 }, grid: { left: '3%', right: '3%', bottom: '5%', containLabel: true } };
-
-            adCharts.spendUser.setOption({
-                ...commonOpts,
-                xAxis: { type: 'category', data: xAxisData, axisLabel: { interval: 0 } },
-                yAxis: [{ type: 'value', name: '消耗(元)', position: 'left' }, { type: 'value', name: '新增用户(人)', position: 'right' }],
-                series: [
-                    { name: '总消耗', type: 'bar', data: spendData, itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] } },
-                    { name: '新增用户', type: 'line', yAxisIndex: 1, data: newUserData, itemStyle: { color: '#10b981' }, smooth: true, symbolSize: 8, lineStyle: { width: 3 } }
-                ]
-            });
-
-            adCharts.cost.setOption({
-                ...commonOpts,
-                xAxis: { type: 'category', data: xAxisData, axisLabel: { interval: 0 } },
-                yAxis: { type: 'value', name: '成本(元)' },
-                series: [
-                    { name: 'CPA(注册成本)', type: 'bar', data: cpaData, itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] } },
-                    { name: 'CPP(付费成本)', type: 'bar', data: cppData, itemStyle: { color: '#8b5cf6', borderRadius: [4, 4, 0, 0] } }
-                ]
-            });
+            if(!window.adTotals || !adCharts.c1) return;
+            let xData=[], spend=[], nUsers=[], cpa=[], cpp=[];
+            adConfig.platforms.forEach(p => adConfig.channels.forEach(c => {
+                xData.push(`${p.name}\n${c.name}`);
+                let tS=0, tN=0, tP=0; adData[p.id][c.id].forEach(i=>{tS+=i.spend; tN+=i.newUsers; tP+=i.paidUsers;});
+                spend.push(tS); nUsers.push(tN); cpa.push(tN>0?tS/tN:0); cpp.push(tP>0?tS/tP:0);
+            }));
+            const cOpts = { tooltip: {trigger:'axis'}, legend: {top:0}, grid: {left:'3%',right:'3%',bottom:'5%',containLabel:true} };
+            adCharts.c1.setOption({...cOpts, xAxis: {type:'category', data:xData}, yAxis:[{name:'消耗',type:'value'},{name:'新增',type:'value'}], series:[{name:'消耗',type:'bar',data:spend,itemStyle:{color:'#f59e0b',borderRadius:[4,4,0,0]}},{name:'新增',type:'line',yAxisIndex:1,data:nUsers,itemStyle:{color:'#10b981'},smooth:true,lineStyle:{width:3}}]});
+            adCharts.c2.setOption({...cOpts, xAxis: {type:'category', data:xData}, yAxis:{name:'成本',type:'value'}, series:[{name:'CPA',type:'bar',data:cpa,itemStyle:{color:'#3b82f6',borderRadius:[4,4,0,0]}},{name:'CPP',type:'bar',data:cpp,itemStyle:{color:'#8b5cf6',borderRadius:[4,4,0,0]}}]});
+        }
+        function exportAdTableToExcel() {
+            const table = document.getElementById('adMainTable');
+            if(table) XLSX.writeFile(XLSX.utils.table_to_book(table), "多渠道投放排期预估表.xlsx");
         }
 
         // ==========================================
-        // 模块联动与传导核心
+        // 阶二：单批次基准 (保持原运算核心)
         // ==========================================
-        function switchTab(tab) {
-            document.getElementById('view-ads').classList.add('hidden');
-            document.getElementById('view-operation').classList.add('hidden');
-            
-            document.getElementById('tab-btn-ads').className = "px-8 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800";
-            document.getElementById('tab-btn-operation').className = "px-8 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800";
-            
-            document.getElementById(`view-${tab}`).classList.remove('hidden');
-            document.getElementById(`tab-btn-${tab}`).className = "px-8 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm bg-white text-blue-600";
-            
-            setTimeout(() => {
-                if(tab === 'ads') { Object.values(adCharts).forEach(c => c.resize()); } 
-                else { Object.values(charts).forEach(c => c.resize()); }
-            }, 50);
-        }
-
-        function syncDataToOperation() {
-            if (!window.adTotals) return;
+        let opCharts = {};
+        
+        function syncToOpParams() {
+            if (!isSyncEnabled || !window.adTotals) return;
             const pts = window.adTotals.pTotals;
-            
-            const andUsers = Math.round(pts.and.newUsers);
-            const andPayRate = pts.and.newUsers > 0 ? (pts.and.paidUsers / pts.and.newUsers) * 100 : 0;
-            const andCost = Math.round(pts.and.spend);
-            
-            const iosUsers = Math.round(pts.ios.newUsers);
-            const iosPayRate = pts.ios.newUsers > 0 ? (pts.ios.paidUsers / pts.ios.newUsers) * 100 : 0;
-            const iosCost = Math.round(pts.ios.spend);
-
-            // 覆写运营面板数据
-            document.getElementById('and_users').value = andUsers;
-            document.getElementById('and_init_paid_rate').value = andPayRate.toFixed(2);
-            document.getElementById('and_cost').value = andCost;
-            
-            document.getElementById('ios_users').value = iosUsers;
-            document.getElementById('ios_init_paid_rate').value = iosPayRate.toFixed(2);
-            document.getElementById('ios_cost').value = iosCost;
-
-            // 触发ARPU公式联动
             ['and', 'ios'].forEach(p => {
-                const arppu = parseFloat(document.getElementById(`${p}_init_arppu`).value) || 1;
-                const payRate = parseFloat(document.getElementById(`${p}_init_paid_rate`).value) / 100 || 0;
-                document.getElementById(`${p}_init_arpu`).value = (payRate * arppu).toFixed(2);
+                const elU = document.getElementById(`${p}_users`);
+                const elC = document.getElementById(`${p}_cost`);
+                const elP = document.getElementById(`${p}_init_paid_rate`);
+                if(elU) elU.value = Math.round(pts[p].newUsers);
+                if(elC) elC.value = Math.round(pts[p].spend);
+                if(elP) elP.value = (pts[p].newUsers > 0 ? (pts[p].paidUsers / pts[p].newUsers) * 100 : 0).toFixed(2);
+                
+                const arppu = parseFloat(document.getElementById(`${p}_init_arppu`)?.value) || 1;
+                const pRate = parseFloat(elP?.value) / 100 || 0;
+                const elA = document.getElementById(`${p}_init_arpu`);
+                if(elA) elA.value = (pRate * arppu).toFixed(2);
             });
-
-            calculateAndRender(); // 重算大盘及 ROI
         }
 
-        // ==========================================
-        // 模块 2：运营数据大盘与 ROI 模型
-        // ==========================================
-        let globalData = [];
-        let charts = {};
-        const TOTAL_DAYS = 360;
-        const keyNodes = [1, 2, 3, 4, 5, 6, 7, 14, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360];
-
-        function computeLateDecayRate(R_P, users, P, L, isPaidPool = false, initPdRate = 1) {
-            if (L <= P) return 0;
-            const pool = isPaidPool ? (users * initPdRate) : users;
-            const targetRet = 0.1 / Math.max(1, pool);
-            if (R_P <= targetRet) return 0;
-            const rate = 1 - Math.exp(Math.log(targetRet / R_P) / (L - P));
-            return Math.max(0, rate);
-        }
         function getPowerRetAtP(P, baseCoef, slope) { return P <= 1 ? 1 : baseCoef * Math.pow(P, -slope); }
-
-        function updateOpDisplaySlopes() {
+        function calculateOpBase() {
+            opData = [];
             ['and', 'ios'].forEach(p => {
-                const users = parseInt(document.getElementById(`${p}_users`).value) || 10000;
-                const L = parseInt(document.getElementById(`${p}_lifecycle`).value) || 180;
-                const pct = parseInt(document.getElementById(`${p}_p_pct`).value) || 20;
-                const P = Math.max(1, Math.round(L * (pct / 100)));
-                const initRetSlope = parseFloat(document.getElementById(`${p}_ret_decay`).value) || 0.65;
-                const initPdRetSlope = parseFloat(document.getElementById(`${p}_pd_ret_decay`).value) || 0.45;
-                const initPdRate = parseFloat(document.getElementById(`${p}_init_paid_rate`).value) / 100 || 0.05;
+                const U = parseInt(document.getElementById(`${p}_users`)?.value)||10000;
+                const L = parseInt(document.getElementById(`${p}_lifecycle`)?.value)||180;
+                const pct = parseInt(document.getElementById(`${p}_p_pct`)?.value)||20;
+                const P = Math.max(1, Math.round(L * (pct/100)));
+                const rS = parseFloat(document.getElementById(`${p}_ret_decay`)?.value)||0.65;
+                const pS = parseFloat(document.getElementById(`${p}_pd_ret_decay`)?.value)||0.45;
+                const pR = parseFloat(document.getElementById(`${p}_init_paid_rate`)?.value)/100||0.05;
                 
-                const baseRetCoef = p === 'and' ? 0.40 : 0.50;
-                const basePdRetCoef = p === 'and' ? 0.85 : 0.95;
-
-                const rateRet = computeLateDecayRate(getPowerRetAtP(P, baseRetCoef, initRetSlope), users, P, L, false);
-                const ratePd = computeLateDecayRate(getPowerRetAtP(P, basePdRetCoef, initPdRetSlope), users, P, L, true, initPdRate);
+                const br = p==='and'?0.4:0.5, bpr = p==='and'?0.85:0.95;
+                const rp_ret = P<=1?1 : br*Math.pow(P,-rS);
+                const rp_pd = P<=1?1 : bpr*Math.pow(P,-pS);
                 
-                document.getElementById(`${p}_late_ret_rate`).value = (rateRet * 100).toFixed(2) + '%';
-                document.getElementById(`${p}_late_pd_rate`).value = (ratePd * 100).toFixed(2) + '%';
+                const rateRet = L<=P?0 : Math.max(0, 1 - Math.exp(Math.log((0.1/Math.max(1,U))/rp_ret)/(L-P)));
+                const ratePd = L<=P?0 : Math.max(0, 1 - Math.exp(Math.log((0.1/Math.max(1,U*pR))/rp_pd)/(L-P)));
+                
+                let el1 = document.getElementById(`${p}_late_ret_rate`), el2 = document.getElementById(`${p}_late_pd_rate`);
+                if(el1) el1.value = (rateRet*100).toFixed(2)+'%'; if(el2) el2.value = (ratePd*100).toFixed(2)+'%';
+                
+                window[`${p}Cfg`] = { 
+                    cost: parseFloat(document.getElementById(`${p}_cost`)?.value)||1, U, L, P, pR, 
+                    arppu: parseFloat(document.getElementById(`${p}_init_arppu`)?.value)||48,
+                    rS, pS, br, bpr, rp_ret, rp_pd, rateRet, ratePd, adS: p==='and'?4:3
+                };
             });
+
+            if(!window.andCfg) return;
+            let acRevA=0, acRevI=0, acRevT=0;
+            const tU = andCfg.U + iosCfg.U, tC = andCfg.cost + iosCfg.cost;
+
+            for(let d=1; d<=TOTAL_DAYS; d++) {
+                const runP = (cfg) => {
+                    let r=0, pr=0;
+                    if(d===1){ r=1; pr=1; }
+                    else if(d<=cfg.P){ r=cfg.br*Math.pow(d,-cfg.rS); pr=cfg.bpr*Math.pow(d,-cfg.pS); }
+                    else if(d<=cfg.L){ r=cfg.rp_ret*Math.pow(1-cfg.rateRet,d-cfg.P); pr=cfg.rp_pd*Math.pow(1-cfg.ratePd,d-cfg.P); }
+                    
+                    let act = cfg.U*r, pd = cfg.U*cfg.pR*pr;
+                    if(act<0.5){ act=0; r=0; } if(pd<0.5){ pd=0; pr=0; } if(pd>act) pd=act;
+                    let arppu = act>0 ? Math.max(cfg.arppu*0.4, cfg.arppu - cfg.adS*Math.log(d)) : 0;
+                    return { r, act, pd, rev: pd*arppu };
+                };
+                
+                let resA = runP(andCfg), resI = runP(iosCfg);
+                acRevA+=resA.rev; acRevI+=resI.rev; acRevT+=(resA.rev+resI.rev);
+
+                opData.push({
+                    day: d,
+                    total: { act: resA.act+resI.act, rev: resA.rev+resI.rev, roi: acRevT/tC },
+                    and: { r:resA.r, act:resA.act, rev:resA.rev, roi: acRevA/andCfg.cost },
+                    ios: { r:resI.r, act:resI.act, rev:resI.rev, roi: acRevI/iosCfg.cost }
+                });
+            }
+            renderOpCharts();
+        }
+
+        function initOpCharts() {
+            const el1 = document.getElementById('opDauChart');
+            const el2 = document.getElementById('opRevChart');
+            if (el1) opCharts.dau = echarts.init(el1);
+            if (el2) opCharts.rev = echarts.init(el2);
+        }
+        function renderOpCharts() {
+            if(!opData.length || !opCharts.dau) return;
+            const allDays = opData.map(d => `Day ${d.day}`);
+            const opts = { tooltip: {trigger:'axis'}, legend: {top:0}, grid: {left:'4%',right:'4%',bottom:'3%',containLabel:true} };
+            let actA=[], actI=[], revT=[];
+            opData.forEach(d=>{actA.push(d.and.act); actI.push(d.ios.act); revT.push(d.total.roi*(andCfg.cost+iosCfg.cost)); });
+
+            opCharts.dau.setOption({...opts, xAxis: {type:'category', boundaryGap:false, data:allDays}, yAxis:{name:'基准单批次活跃'}, series:[{name:'And活跃',type:'line',smooth:true,showSymbol:false,itemStyle:{color:'#10b981'},data:actA},{name:'iOS活跃',type:'line',smooth:true,showSymbol:false,itemStyle:{color:'#3b82f6'},data:actI}]});
+            opCharts.rev.setOption({...opts, xAxis: {type:'category', boundaryGap:false, data:allDays}, yAxis:{name:'基准流水'}, series:[{name:'大盘累收',type:'line',smooth:true,showSymbol:false,itemStyle:{color:'#8b5cf6'},areaStyle:{opacity:0.2},data:revT}]});
+        }
+        function calculateAndRenderOp() { calculateOpBase(); showToast("二阶底座基准更新成功"); }
+
+        // ==========================================
+        // 阶三：🔥全生命周期沙盘 (真实日历+蒙特卡洛随机波动引擎)
+        // ==========================================
+        let prodCharts = {};
+        
+        // 核心随机扰动生成器
+        function getRandomNoise(percentStr) {
+            const vol = parseFloat(percentStr) / 100 || 0;
+            if(vol === 0) return 1;
+            return 1 + (Math.random() * 2 - 1) * vol; 
+        }
+
+        function calculateProductSandBox() {
+            if(!opData.length) return showToast("请先执行单批次基准推演！");
+            
+            const startDStr = document.getElementById('prod_start_date').value;
+            const bDays = parseInt(document.getElementById('prod_buy_days').value)||60;
+            const nAnd = parseInt(document.getElementById('prod_nat_and').value)||0;
+            const nIos = parseInt(document.getElementById('prod_nat_ios').value)||0;
+
+            // 获取UI上的真实随机率设定
+            const volNew = document.getElementById('vol_new').value;
+            const volAct = document.getElementById('vol_act').value;
+            const volRev = document.getElementById('vol_rev').value;
+
+            const uA = andCfg.U, uI = iosCfg.U, cA = andCfg.cost, cI = iosCfg.cost;
+            
+            productData = [];
+            let ccA = 0, ccI = 0, crA = 0, crI = 0;
+            let sd = new Date(startDStr);
+
+            for(let d=1; d<=TOTAL_DAYS; d++) {
+                let daA=0, daI=0, drA=0, drI=0, dcA=0, dcI=0, dnA=0, dnI=0;
+
+                // 计算当天的波动乘数 (真实大盘中，全天整体有一套噪音，不同生命周期有微调，此处采用全天整体噪音映射 BI 大盘)
+                const noiseNew = getRandomNoise(volNew);
+                const noiseAct = getRandomNoise(volAct);
+                const noiseRev = getRandomNoise(volRev);
+
+                for(let cohort=1; cohort<=d; cohort++) {
+                    const age = d - cohort + 1;
+                    if(age > 360) continue;
+                    
+                    const md = opData[age-1];
+                    const isB = cohort <= bDays;
+                    
+                    // 当天的 cohorts(0) 受到新增波动的剧烈影响
+                    if(cohort === d) { 
+                        dnA += (isB ? uA : nAnd) * noiseNew; 
+                        dnI += (isB ? uI : nIos) * noiseNew; 
+                        dcA += (isB ? cA : 0) * noiseNew; // 消耗同样波动
+                        dcI += (isB ? cI : 0) * noiseNew; 
+                    }
+                    
+                    // 获取导入基数 (由于历史每一天的导入量已经确定，理想情况需要保存历史每日导入，此处为性能优化简化为同态按今日波动重算，效果近似)
+                    const base_cohortA = (isB ? uA : nAnd);
+                    const base_cohortI = (isB ? uI : nIos);
+
+                    const rA = uA>0 ? base_cohortA/uA : 0;
+                    daA += md.and.act * rA; 
+                    drA += md.and.rev * rA;
+                    
+                    const rI = uI>0 ? base_cohortI/uI : 0;
+                    daI += md.ios.act * rI; 
+                    drI += md.ios.rev * rI;
+                }
+
+                // 在汇总后附加每日全局噪音，生成极为真实的曲线抖动 (不允许跌为负)
+                daA = Math.max(0, daA * noiseAct);
+                daI = Math.max(0, daI * noiseAct);
+                drA = Math.max(0, drA * noiseRev);
+                drI = Math.max(0, drI * noiseRev);
+
+                ccA += dcA; crA += drA;
+                ccI += dcI; crI += drI;
+
+                let cDate = new Date(sd); cDate.setDate(sd.getDate()+(d-1));
+                const ds = `${String(cDate.getMonth()+1).padStart(2,'0')}-${String(cDate.getDate()).padStart(2,'0')}`;
+
+                productData.push({
+                    d, date: ds,
+                    t: { n: dnA+dnI, act: daA+daI, rev: drA+drI, cr: crA+crI, cc: ccA+ccI, roi: (ccA+ccI)>0?(crA+crI)/(ccA+ccI):0 },
+                    a: { act: daA, cr: crA, roi: ccA>0?crA/ccA:0 },
+                    i: { act: daI, cr: crI, roi: ccI>0?crI/ccI:0 }
+                });
+            }
+            renderProductTable();
+            renderProductCharts();
+            showToast("蒙特卡洛随机沙盘推演完成！");
+        }
+
+        function renderProductTable() {
+            const tbody = document.getElementById('prodTableBody');
+            if(!tbody) return;
+            let html = '';
+            productData.forEach(r => {
+                html += `
+                    <tr class="hover:bg-slate-100/80 transition-colors">
+                        <td class="px-3 py-2 border-r font-medium text-slate-700 bg-slate-50 text-center sticky-col border-b z-20 whitespace-nowrap font-sans">${r.date}</td>
+                        <td class="px-2 py-2 border-r text-slate-500 bg-slate-50 text-center sticky-col border-b z-20 font-sans" style="left:100px;">D${r.d}</td>
+                        <td class="px-3 py-2 text-right border-b font-bold text-orange-600 bg-orange-50/20">${fmtI(r.t.n)}</td>
+                        <td class="px-3 py-2 text-right border-b font-bold text-orange-800 bg-orange-50/20">${fmtI(r.t.act)}</td>
+                        <td class="px-3 py-2 text-right border-b text-slate-700">¥${fmtM(r.t.rev)}</td>
+                        <td class="px-3 py-2 text-right border-b text-rose-500 border-l-2 shadow-[inset_2px_0_0_rgba(0,0,0,0.05)] font-medium">¥${fmtM(r.t.cc)}</td>
+                        <td class="px-3 py-2 text-right border-b font-bold text-emerald-600">¥${fmtM(r.t.cr)}</td>
+                        <td class="px-3 py-2 text-right border-r border-b font-black ${r.t.roi>=1?'text-red-600 bg-red-50/50':'text-slate-600'}"> ${fmtP(r.t.roi)}%</td>
+                        
+                        <td class="px-3 py-2 text-right border-b">${fmtI(r.a.act)}</td>
+                        <td class="px-3 py-2 text-right border-b text-green-700">¥${fmtM(r.a.cr)}</td>
+                        <td class="px-3 py-2 text-right border-r border-b font-bold ${r.a.roi>=1?'text-rose-600':'text-slate-500'}">${fmtP(r.a.roi)}%</td>
+                        
+                        <td class="px-3 py-2 text-right border-b">${fmtI(r.i.act)}</td>
+                        <td class="px-3 py-2 text-right border-b text-blue-700">¥${fmtM(r.i.cr)}</td>
+                        <td class="px-3 py-2 text-right border-b font-bold ${r.i.roi>=1?'text-rose-600':'text-slate-500'}">${fmtP(r.i.roi)}%</td>
+                    </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function initProdCharts() {
+            const el1 = document.getElementById('prodDauChart');
+            const el2 = document.getElementById('prodRoiChart');
+            if (el1) prodCharts.dau = echarts.init(el1);
+            if (el2) prodCharts.roi = echarts.init(el2);
+        }
+        
+        function renderProductCharts() {
+            if(!productData.length || !prodCharts.dau || !prodCharts.roi) return;
+            const xData = productData.map(d => d.date);
+            const opts = { 
+                tooltip: {trigger:'axis'}, legend: {top:0}, 
+                grid: {left:'4%',right:'4%',bottom:'10%',containLabel:true},
+                dataZoom: [{type: 'inside', start: 0, end: 100}, {start: 0, end: 100, height: 20, bottom: 0}] // 添加滑动缩放
+            };
+            
+            let aA=[], iA=[], tN=[], tCr=[], tCc=[], tRoi=[];
+            productData.forEach(d => { aA.push(d.a.act); iA.push(d.i.act); tN.push(d.t.n); tCr.push(d.t.cr); tCc.push(d.t.cc); tRoi.push(d.t.roi*100); });
+
+            // DAU Stack Area Chart + New Users Bar
+            prodCharts.dau.setOption({...opts, xAxis:{type:'category', boundaryGap:true, data:xData}, yAxis:[{name:'DAU',type:'value'},{name:'新增',type:'value'}],
+                series: [
+                    { name:'And DAU', type:'line', areaStyle:{opacity:0.3}, stack:'Total', smooth:false, showSymbol:false, itemStyle:{color:'#10b981'}, data:aA },
+                    { name:'iOS DAU', type:'line', areaStyle:{opacity:0.3}, stack:'Total', smooth:false, showSymbol:false, itemStyle:{color:'#3b82f6'}, data:iA },
+                    { name:'当日大盘新增', type:'bar', yAxisIndex:1, itemStyle:{color:'#f59e0b', opacity:0.6}, data:tN }
+                ]
+            });
+
+            // ROI & Rev Dual Axis with Markline
+            prodCharts.roi.setOption({...opts, xAxis:{type:'category', data:xData}, 
+                yAxis:[{name:'累计流水',type:'value'},{name:'ROI (%)',type:'value',min:0}],
+                series: [
+                    { name:'累计总流水', type:'line', smooth:false, showSymbol:false, itemStyle:{color:'#10b981'}, lineStyle:{width:3}, areaStyle:{color:'rgba(16,185,129,0.1)'}, data:tCr },
+                    { name:'累计总耗资', type:'line', smooth:false, showSymbol:false, itemStyle:{color:'#ef4444'}, lineStyle:{width:2, type:'dashed'}, data:tCc },
+                    { name:'实盘 ROI', type:'line', yAxisIndex:1, smooth:false, showSymbol:false, itemStyle:{color:'#f97316'}, data:tRoi,
+                      markLine: { data: [{yAxis: 100, name: '100%回本线'}], itemStyle:{color:'#dc2626'}, label:{formatter:'回本线 {c}%', position:'insideEndTop'} }
+                    }
+                ]
+            });
+        }
+
+        function exportProductToExcel() {
+            if(!productData.length) return showToast("请先生成产品报表！");
+            const wb = XLSX.utils.book_new();
+            const aoa = [
+                ["全生命周期产品日历演进表 (带随机波动特征)"],
+                ["日历日期", "天数", "全盘新增", "全盘DAU", "单日流水", "累计耗资", "累计流水", "大盘ROI", 
+                 "And_DAU", "And_累计流水", "And_ROI", "iOS_DAU", "iOS_累计流水", "iOS_ROI"]
+            ];
+            productData.forEach(r => {
+                aoa.push([ r.date, r.d, r.t.n, r.t.act, r.t.rev, r.t.cc, r.t.cr, r.t.roi, r.a.act, r.a.cr, r.a.roi, r.i.act, r.i.cr, r.i.roi ]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            ws['!cols'] = [{wch: 10}, {wch: 8}]; for(let i=0;i<12;i++) ws['!cols'].push({wch: 12});
+            XLSX.utils.book_append_sheet(wb, ws, "真实沙盘导出");
+            XLSX.writeFile(wb, "产品大盘日历推演表(含波动).xlsx");
+        }
+
+        function triggerFullChainUpdate() {
+            calculateAds();
+            syncToOpParams();
+            calculateOpBase();
+            if(document.getElementById('view-product').classList.contains('hidden') === false) {
+                calculateProductSandBox();
+            }
         }
 
         window.onload = function() {
             initAdCharts();
+            initOpCharts();
+            initProdCharts();
+            
+            document.querySelectorAll('.op-input').forEach(inp => inp.addEventListener('input', () => {
+                ['and', 'ios'].forEach(p => {
+                    const pdRate = parseFloat(document.getElementById(`${p}_init_paid_rate`)?.value)/100||0;
+                    if (inp.id.includes('init_paid_rate') || inp.id.includes('init_arppu')) {
+                        const eA = document.getElementById(`${p}_init_arpu`);
+                        if(eA) eA.value = (pdRate * (parseFloat(document.getElementById(`${p}_init_arppu`)?.value)||0)).toFixed(2);
+                    } else if (inp.id.includes('init_arpu')) {
+                        const eP = document.getElementById(`${p}_init_paid_rate`);
+                        if(eP) eP.value = (((parseFloat(document.getElementById(`${p}_init_arpu`)?.value)||0) / (parseFloat(document.getElementById(`${p}_init_arppu`)?.value)||1)) * 100).toFixed(2);
+                    }
+                });
+            }));
+
+            // Boot sequence
             initAdData();
-
-            charts.dauChart = echarts.init(document.getElementById('dauChart'));
-            charts.cumRevChart = echarts.init(document.getElementById('cumRevChart'));
-
-            const inputs = document.querySelectorAll('.op-input');
-            inputs.forEach(input => {
-                input.addEventListener('input', () => {
-                    ['and', 'ios'].forEach(platform => {
-                        const pdRate = parseFloat(document.getElementById(`${platform}_init_paid_rate`).value) / 100 || 0;
-                        if (input.id.includes('init_paid_rate') || input.id.includes('init_arppu')) {
-                            const arppu = parseFloat(document.getElementById(`${platform}_init_arppu`).value) || 0;
-                            document.getElementById(`${platform}_init_arpu`).value = (pdRate * arppu).toFixed(2);
-                        } else if (input.id.includes('init_arpu')) {
-                            const arpu = parseFloat(document.getElementById(`${platform}_init_arpu`).value) || 0;
-                            const arppu = parseFloat(document.getElementById(`${platform}_init_arppu`).value) || 1; 
-                            document.getElementById(`${platform}_init_paid_rate`).value = ((arpu / arppu) * 100).toFixed(2);
-                        }
-                    });
-                    updateOpDisplaySlopes();
-                });
-            });
-
-            window.addEventListener('resize', () => {
-                Object.values(adCharts).forEach(c => c.resize());
-                Object.values(charts).forEach(c => c.resize());
-            });
-
-            calculateAndRender();
+            calculateAds();
+            calculateOpBase();
+            
+            // Switch to Sandbox by default for better show
+            switchTab('product');
+            setTimeout(calculateProductSandBox, 200);
         };
-
-        function calculateAndRender() {
-            globalData = [];
-            updateOpDisplaySlopes();
-            
-            const params = {};
-            ['and', 'ios'].forEach(p => {
-                params[p] = {
-                    cost: parseFloat(document.getElementById(`${p}_cost`).value) || 1, // 防止除以0
-                    users: parseInt(document.getElementById(`${p}_users`).value) || 10000,
-                    L: parseInt(document.getElementById(`${p}_lifecycle`).value) || 180,
-                    P: Math.max(1, Math.round((parseInt(document.getElementById(`${p}_lifecycle`).value) || 180) * ((parseInt(document.getElementById(`${p}_p_pct`).value) || 20) / 100))),
-                    initPdRate: parseFloat(document.getElementById(`${p}_init_paid_rate`).value) / 100 || 0.05,
-                    initArppu: parseFloat(document.getElementById(`${p}_init_arppu`).value) || 48,
-                    retSlope: parseFloat(document.getElementById(`${p}_ret_decay`).value) || 0.65,
-                    pdRetSlope: parseFloat(document.getElementById(`${p}_pd_ret_decay`).value) || 0.45,
-                    baseRet: p === 'and' ? 0.40 : 0.50,
-                    basePdRet: p === 'and' ? 0.85 : 0.95
-                };
-                params[p].RP_ret = getPowerRetAtP(params[p].P, params[p].baseRet, params[p].retSlope);
-                params[p].RP_pd = getPowerRetAtP(params[p].P, params[p].basePdRet, params[p].pdRetSlope);
-                params[p].rateRet = computeLateDecayRate(params[p].RP_ret, params[p].users, params[p].P, params[p].L, false);
-                params[p].ratePd = computeLateDecayRate(params[p].RP_pd, params[p].users, params[p].P, params[p].L, true, params[p].initPdRate);
-            });
-
-            let andCumRev = 0, iosCumRev = 0, totalCumRev = 0;
-            let andDay1Ltv = 0, iosDay1Ltv = 0, totalDay1Ltv = 0;
-            const totalUsers = params.and.users + params.ios.users;
-            const totalCost = params.and.cost + params.ios.cost;
-
-            for (let d = 1; d <= TOTAL_DAYS; d++) {
-                const calcPlatform = (p_name) => {
-                    const cfg = params[p_name];
-                    let ret = 0, pd_ret = 0;
-                    if (d === 1) { ret = 1; pd_ret = 1; } 
-                    else if (d <= cfg.P) {
-                        ret = cfg.baseRet * Math.pow(d, -cfg.retSlope);
-                        pd_ret = cfg.basePdRet * Math.pow(d, -cfg.pdRetSlope);
-                    } else if (d <= cfg.L) {
-                        ret = cfg.RP_ret * Math.pow(1 - cfg.rateRet, d - cfg.P);
-                        pd_ret = cfg.RP_pd * Math.pow(1 - cfg.ratePd, d - cfg.P);
-                    }
-                    let active = cfg.users * ret;
-                    let paid = (cfg.users * cfg.initPdRate) * pd_ret;
-                    if (active < 0.5) { active = 0; ret = 0; }
-                    if (paid < 0.5) { paid = 0; pd_ret = 0; }
-                    if (paid > active) paid = active;
-                    
-                    const pdRate = active > 0 ? (paid / active) : 0;
-                    const arppuDropSpeed = p_name === 'and' ? 4 : 3;
-                    const arppu = active > 0 ? Math.max(cfg.initArppu * 0.4, cfg.initArppu - arppuDropSpeed * Math.log(d)) : 0;
-                    const dailyRev = paid * arppu;
-                    return { ret, active, pdRate, paid, arppu, dailyRev };
-                };
-
-                const andRes = calcPlatform('and');
-                const iosRes = calcPlatform('ios');
-                andCumRev += andRes.dailyRev; 
-                iosCumRev += iosRes.dailyRev;
-                
-                const and_ltv = andCumRev / params.and.users;
-                if (d === 1) andDay1Ltv = and_ltv;
-                const ios_ltv = iosCumRev / params.ios.users;
-                if (d === 1) iosDay1Ltv = ios_ltv;
-
-                const tActive = andRes.active + iosRes.active;
-                const tPaid = andRes.paid + iosRes.paid;
-                const tDailyRev = andRes.dailyRev + iosRes.dailyRev;
-                totalCumRev += tDailyRev;
-                const tLtv = totalCumRev / totalUsers;
-                if (d === 1) totalDay1Ltv = tLtv;
-
-                // 新增 ROI 核算
-                const andRoi = andCumRev / params.and.cost;
-                const iosRoi = iosCumRev / params.ios.cost;
-                const totalRoi = totalCumRev / totalCost;
-
-                globalData.push({
-                    day: d,
-                    total: { 
-                        active: tActive, pd_users: tPaid, pd_rate: tActive > 0 ? (tPaid / tActive) : 0, 
-                        arpu: tActive > 0 ? (tDailyRev / tActive) : 0, daily_rev: tDailyRev, cum_rev: totalCumRev, 
-                        ltv: tLtv, ltv_mul: totalDay1Ltv > 0 ? (tLtv / totalDay1Ltv) : 0, roi: totalRoi 
-                    },
-                    and: { 
-                        ret: andRes.ret, active: andRes.active, pd_rate: andRes.pdRate, pd_users: andRes.paid, 
-                        arppu: andRes.arppu, daily_rev: andRes.dailyRev, cum_rev: andCumRev, 
-                        ltv: and_ltv, ltv_mul: andDay1Ltv > 0 ? (and_ltv / andDay1Ltv) : 0, roi: andRoi 
-                    },
-                    ios: { 
-                        ret: iosRes.ret, active: iosRes.active, pd_rate: iosRes.pdRate, pd_users: iosRes.paid, 
-                        arppu: iosRes.arppu, daily_rev: iosRes.dailyRev, cum_rev: iosCumRev, 
-                        ltv: ios_ltv, ltv_mul: iosDay1Ltv > 0 ? (ios_ltv / iosDay1Ltv) : 0, roi: iosRoi 
-                    }
-                });
-            }
-            renderOpTable();
-            renderOpCharts();
-        }
-
-        function renderOpTable() {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = ''; 
-            
-            let maxVals = { tAct:0, tRev:0, tArpu:0, aAct:0, aRev:0, aArpu:0, iAct:0, iRev:0, iArpu:0 };
-            keyNodes.forEach(d => {
-                const r = globalData[d - 1];
-                maxVals.tAct = Math.max(maxVals.tAct, r.total.active); maxVals.tRev = Math.max(maxVals.tRev, r.total.daily_rev); maxVals.tArpu = Math.max(maxVals.tArpu, r.total.arpu);
-                maxVals.aAct = Math.max(maxVals.aAct, r.and.active); maxVals.aRev = Math.max(maxVals.aRev, r.and.daily_rev); maxVals.aArpu = Math.max(maxVals.aArpu, r.and.arppu);
-                maxVals.iAct = Math.max(maxVals.iAct, r.ios.active); maxVals.iRev = Math.max(maxVals.iRev, r.ios.daily_rev); maxVals.iArpu = Math.max(maxVals.iArpu, r.ios.arppu);
-            });
-
-            // 支持设定基准 100% 回本线的数据条
-            const tdBar = (val, max, fmt, color) => {
-                const pct = max > 0 ? (val / max) * 100 : 0;
-                return `<td class="relative px-3 py-2 text-right border-b z-10">
-                    <div class="absolute inset-y-1 right-0 ${color} opacity-[0.25] data-bar -z-10 rounded-l" style="width: ${pct}%"></div>
-                    <span class="relative z-10 font-medium ${val===0?'text-slate-300':'text-slate-800'} drop-shadow-sm">${fmt(val)}</span>
-                </td>`;
-            };
-            
-            const roiBar = (val) => {
-                const isProfitable = val >= 1;
-                const color = isProfitable ? 'bg-rose-500' : 'bg-rose-200';
-                const pct = Math.min(100, val * 50); // 以 200% 为填满基准
-                return `<td class="relative px-3 py-2 text-right border-b border-l-2 shadow-[inset_2px_0_0_rgba(0,0,0,0.05)] z-10">
-                    <div class="absolute inset-y-1 right-0 ${color} opacity-[0.2] data-bar -z-10 rounded-l" style="width: ${pct}%"></div>
-                    <span class="relative z-10 font-bold ${isProfitable?'text-rose-600':'text-slate-600'} drop-shadow-sm">${fmtP(val)}%</span>
-                </td>`;
-            };
-
-            keyNodes.forEach(day => {
-                const row = globalData[day - 1];
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-100/80 transition-colors";
-                tr.innerHTML = `
-                    <td class="px-4 py-2 border-r font-medium text-slate-700 bg-slate-50 text-center sticky-col border-b z-20">第 ${day} 天</td>
-                    
-                    ${tdBar(row.total.active, maxVals.tAct, fmtI, 'bg-blue-600')}
-                    <td class="px-3 py-2 text-right border-b text-slate-600">${fmtI(row.total.pd_users)}</td>
-                    <td class="px-3 py-2 text-right border-b">${fmtP(row.total.pd_rate)}%</td>
-                    ${tdBar(row.total.arpu, maxVals.tArpu, v=>'¥'+fmtM(v), 'bg-purple-600')}
-                    ${tdBar(row.total.daily_rev, maxVals.tRev, v=>'¥'+fmtM(v), 'bg-emerald-600')}
-                    <td class="px-3 py-2 text-right border-b font-bold text-purple-700">¥${fmtM(row.total.ltv)}</td>
-                    ${roiBar(row.total.roi)}
-                    <td class="px-3 py-2 text-right border-r border-b font-bold text-slate-900">${row.total.ltv_mul.toFixed(2)}x</td>
-
-                    <td class="px-3 py-2 text-right border-b">${fmtP(row.and.ret)}%</td>
-                    ${tdBar(row.and.active, maxVals.aAct, fmtI, 'bg-blue-500')}
-                    <td class="px-3 py-2 text-right border-b">${fmtP(row.and.pd_rate)}%</td>
-                    <td class="px-3 py-2 text-right border-b text-slate-600">${fmtI(row.and.pd_users)}</td>
-                    ${tdBar(row.and.arppu, maxVals.aArpu, v=>'¥'+fmtM(v), 'bg-purple-500')}
-                    ${tdBar(row.and.daily_rev, maxVals.aRev, v=>'¥'+fmtM(v), 'bg-emerald-500')}
-                    <td class="px-3 py-2 text-right border-b font-medium text-green-700">¥${fmtM(row.and.ltv)}</td>
-                    ${roiBar(row.and.roi)}
-                    <td class="px-3 py-2 text-right border-r border-b font-bold text-slate-800">${row.and.ltv_mul.toFixed(2)}x</td>
-
-                    <td class="px-3 py-2 text-right border-b">${fmtP(row.ios.ret)}%</td>
-                    ${tdBar(row.ios.active, maxVals.iAct, fmtI, 'bg-blue-500')}
-                    <td class="px-3 py-2 text-right border-b">${fmtP(row.ios.pd_rate)}%</td>
-                    <td class="px-3 py-2 text-right border-b text-slate-600">${fmtI(row.ios.pd_users)}</td>
-                    ${tdBar(row.ios.arppu, maxVals.iArpu, v=>'¥'+fmtM(v), 'bg-purple-500')}
-                    ${tdBar(row.ios.daily_rev, maxVals.iRev, v=>'¥'+fmtM(v), 'bg-emerald-500')}
-                    <td class="px-3 py-2 text-right border-b font-medium text-blue-700">¥${fmtM(row.ios.ltv)}</td>
-                    ${roiBar(row.ios.roi)}
-                    <td class="px-3 py-2 text-right border-b font-bold text-slate-800">${row.ios.ltv_mul.toFixed(2)}x</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function renderOpCharts() {
-            const allDays = globalData.map(d => `Day ${d.day}`);
-            const commonOptions = { tooltip: { trigger: 'axis' }, legend: { top: 0 }, grid: { left: '4%', right: '4%', bottom: '3%', containLabel: true } };
-
-            charts.dauChart.setOption({
-                ...commonOptions,
-                xAxis: { type: 'category', boundaryGap: false, data: allDays },
-                yAxis: { type: 'value', name: '活跃人数' },
-                color: ['#10b981', '#3b82f6', '#8b5cf6'],
-                series: [
-                    { name: 'Android 活跃', type: 'line', smooth: true, showSymbol: false, data: globalData.map(d => d.and.active) },
-                    { name: 'iOS 活跃', type: 'line', smooth: true, showSymbol: false, data: globalData.map(d => d.ios.active) },
-                    { name: '大盘总活跃', type: 'line', smooth: true, showSymbol: false, lineStyle: { width: 3, type: 'dashed' }, data: globalData.map(d => d.total.active) }
-                ]
-            });
-
-            charts.cumRevChart.setOption({
-                ...commonOptions,
-                xAxis: { type: 'category', boundaryGap: false, data: allDays },
-                yAxis: { type: 'value', axisLabel: { formatter: '¥{value}' } },
-                color: ['#10b981', '#3b82f6', '#8b5cf6'],
-                series: [
-                    { name: 'Android 累计营收', type: 'line', smooth: true, showSymbol: false, data: globalData.map(d => d.and.cum_rev) },
-                    { name: 'iOS 累计营收', type: 'line', smooth: true, showSymbol: false, data: globalData.map(d => d.ios.cum_rev) },
-                    { name: '大盘总累计营收', type: 'line', smooth: true, showSymbol: false, lineStyle: { width: 3, type: 'dashed' }, data: globalData.map(d => d.total.cum_rev) }
-                ]
-            });
-        }
-
-        function exportToExcel() {
-            const wb = XLSX.utils.book_new();
-            const aoa = [
-                ["全链路商业化数据明细表 (360天演进 - 附ROI核算)"],
-                [
-                    "天数", "大盘总活跃", "大盘总付费", "大盘付费率", "大盘ARPU", "大盘日营收", "综合LTV", "综合ROI", "综合LTV倍率",
-                    "And_留存", "And_活跃", "And_付费率", "And_付费人数", "And_付费ARPU", "And_日营收", "And_LTV", "And_ROI", "And_LTV倍率",
-                    "iOS_留存", "iOS_活跃", "iOS_付费率", "iOS_付费人数", "iOS_付费ARPU", "iOS_日营收", "iOS_LTV", "iOS_ROI", "iOS_LTV倍率"
-                ]
-            ];
-            globalData.forEach(r => {
-                aoa.push([
-                    r.day, r.total.active, r.total.pd_users, r.total.pd_rate, r.total.arpu, r.total.daily_rev, r.total.ltv, r.total.roi, r.total.ltv_mul,
-                    r.and.ret, r.and.active, r.and.pd_rate, r.and.pd_users, r.and.arppu, r.and.daily_rev, r.and.ltv, r.and.roi, r.and.ltv_mul,
-                    r.ios.ret, r.ios.active, r.ios.pd_rate, r.ios.pd_users, r.ios.arppu, r.ios.daily_rev, r.ios.ltv, r.ios.roi, r.ios.ltv_mul
-                ]);
-            });
-            const ws = XLSX.utils.aoa_to_sheet(aoa);
-            ws['!cols'] = [{wch: 10}]; for(let i=0; i<27; i++) ws['!cols'].push({wch: 12});
-            XLSX.utils.book_append_sheet(wb, ws, "运营预估明细(带ROI)");
-            XLSX.writeFile(wb, "全链路商业化数据明细表.xlsx");
-        }
     </script>
 </body>
 </html>
