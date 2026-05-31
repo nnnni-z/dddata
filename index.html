@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全链路商业化预估与沙盘系统 (精调终极版)</title>
+    <title>全链路商业化预估与沙盘系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; }
         .chart-container { width: 100%; height: 380px; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
@@ -19,20 +19,42 @@
         .sticky-head { position: sticky; top: 0; z-index: 30; }
         .sticky-head-col { position: sticky; top: 0; z-index: 50; background-color: #f1f5f9; }
         
-        /* 屏蔽原生数字输入框的上下箭头 */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .ad-input { background: transparent; border: 1px solid transparent; text-align: right; border-radius: 4px; padding: 2px 4px; outline: none; transition: all 0.2s; font-family: ui-monospace, SFMono-Regular, monospace; }
         .ad-input:hover { border-color: #cbd5e1; background: #fff; }
         .ad-input:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 1px #3b82f6; }
+        
+        /* 登录屏虚化动画 */
+        .fade-out { animation: fadeOut 0.5s forwards; }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+        .data-bar { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 p-4 md:p-6">
+<body class="text-slate-800">
 
-    <div class="max-w-[1700px] mx-auto space-y-4">
-        <!-- ==================== 全局导航 ==================== -->
+    <!-- ==================== 登录拦截屏 ==================== -->
+    <div id="login-screen" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all text-center">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">商业化沙盘推演系统</h2>
+            <p class="text-sm text-slate-500 mb-6">请输入核心访问密码以解锁大盘</p>
+            <input type="password" id="sys-pwd" placeholder="请输入密码" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-center tracking-widest text-lg mb-4" onkeydown="if(event.key==='Enter') unlockSystem()">
+            <button onclick="unlockSystem()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors shadow-md shadow-blue-500/30">
+                解锁进入系统
+            </button>
+            <div id="login-error" class="text-rose-500 text-sm mt-3 hidden animate-bounce">⚠️ 密码验证失败，请重试！</div>
+        </div>
+    </div>
+
+    <!-- ==================== 主应用区 ==================== -->
+    <div id="main-app" class="hidden max-w-[1700px] mx-auto space-y-4 pt-4 md:pt-6 px-4 md:px-6 pb-12">
+        
+        <!-- 全局导航 -->
         <div class="flex flex-col md:flex-row justify-between items-center bg-white rounded-2xl shadow-sm border border-slate-100 p-3 mb-4 gap-4 sticky top-0 z-[60]">
-            <div class="bg-slate-100 p-1 rounded-xl flex gap-1 shadow-inner overflow-x-auto max-w-full">
+            <div class="bg-slate-100 p-1 rounded-xl flex gap-1 shadow-inner overflow-x-auto max-w-full shrink-0">
                 <button id="tab-btn-ads" onclick="switchTab('ads')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm bg-white text-blue-600 whitespace-nowrap">
                     一阶：投放素材测算
                 </button>
@@ -44,14 +66,18 @@
                 </button>
             </div>
             
-            <div class="flex items-center gap-3 overflow-x-auto max-w-full pb-1 md:pb-0">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-center md:justify-end pb-1 md:pb-0">
+                <button onclick="openPresetModal()" class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-100 transition-colors shadow-sm whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    💾 参数配置库
+                </button>
                 <button onclick="exportAllToExcel()" class="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors shadow-sm whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    导出全盘数据 (Excel)
+                    导出全盘数据
                 </button>
-                <label class="flex items-center gap-2 cursor-pointer bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-emerald-800 font-bold hover:bg-emerald-100 transition-colors shadow-sm whitespace-nowrap">
+                <label class="flex items-center gap-2 cursor-pointer bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-emerald-800 font-bold hover:bg-emerald-100 transition-colors shadow-sm whitespace-nowrap shrink-0">
                     <input type="checkbox" id="syncToggle" onchange="toggleSync()" class="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500">
-                    <span class="text-sm">开启全链贯通</span>
+                    <span class="text-sm">全链贯通</span>
                 </label>
             </div>
         </div>
@@ -76,7 +102,6 @@
                         <p class="text-xs text-slate-400 mt-1">悬浮于渠道列或素材列可快速增删，名称支持直接点击修改。</p>
                     </div>
                 </div>
-                <!-- 重点排版修复区域 -->
                 <div class="overflow-auto border border-slate-200 rounded-lg shadow-inner max-h-[600px]">
                     <table id="adMainTable" class="w-full text-sm text-left whitespace-nowrap min-w-max bg-white">
                         <thead class="text-xs text-slate-600">
@@ -110,12 +135,11 @@
 
         <!-- ==================== 视图 2：运营单批次基准 ==================== -->
         <div id="view-operation" class="space-y-6 hidden">
-            <!-- 动态参数输入面板 -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                         理论单日批次预估特征 (沙盘推演底座)
-                        <span id="sync-badge" class="hidden text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full animate-pulse border border-emerald-200">✅ 联动开启，基础特征已由投放引擎接管</span>
+                        <span id="sync-badge" class="hidden text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full animate-pulse border border-emerald-200">✅ 联动开启，基础特征由投放引擎接管</span>
                     </h2>
                     <button onclick="calculateAndRenderOp()" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm">
                         应用底层参变量
@@ -178,7 +202,6 @@
                 </div>
             </div>
 
-            <!-- 恢复的单批次明细表，并调整为关键节点 -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 overflow-hidden flex flex-col">
                 <h2 class="text-lg font-bold text-slate-800 mb-2">二阶：生命周期关键节点衰减明细表</h2>
                 <p class="text-xs text-slate-500 mb-4">仅展示关键里程碑日期 (Day 1~7, 14, 30, 60...)</p>
@@ -206,7 +229,6 @@
 
         <!-- ==================== 视图 3：大盘真实沙盘(含波动) ==================== -->
         <div id="view-product" class="space-y-6 hidden">
-            <!-- (代码未改动，保持原有蒙特卡洛随机波动引擎，为节省空间，此处简写UI占位，逻辑完全保留) -->
             <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl shadow-sm border border-orange-100 p-6">
                 <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-5 gap-4">
                     <div>
@@ -218,18 +240,18 @@
                 <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
                     <div class="md:col-span-2 bg-white/80 rounded-xl p-3 shadow-sm border border-orange-100 space-y-3">
                         <div class="grid grid-cols-2 gap-2">
-                            <div><label class="block text-[10px] font-bold text-orange-800 mb-1">开始首发日期</label><input type="date" id="prod_start_date" class="w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
-                            <div><label class="block text-[10px] font-bold text-orange-800 mb-1">买量持续期(天)</label><input type="number" id="prod_buy_days" value="60" class="w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
-                            <div><label class="block text-[10px] font-bold text-slate-600 mb-1">停投自然新增(And)</label><input type="number" id="prod_nat_and" value="1000" class="w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
-                            <div><label class="block text-[10px] font-bold text-slate-600 mb-1">停投自然新增(iOS)</label><input type="number" id="prod_nat_ios" value="500" class="w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-orange-800 mb-1">开始首发日期</label><input type="date" id="prod_start_date" class="prod-input w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-orange-800 mb-1">买量持续期(天)</label><input type="number" id="prod_buy_days" value="60" class="prod-input w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-600 mb-1">停投自然新增(And)</label><input type="number" id="prod_nat_and" value="1000" class="prod-input w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-600 mb-1">停投自然新增(iOS)</label><input type="number" id="prod_nat_ios" value="500" class="prod-input w-full bg-transparent border-b border-orange-300 outline-none text-xs"></div>
                         </div>
                     </div>
                     <div class="md:col-span-5 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-3 shadow-sm border border-indigo-100">
                         <h4 class="text-xs font-bold text-indigo-800 border-b border-indigo-200 pb-1 mb-2">🎲 真实世界波动率模拟引擎 (随机噪音幅度)</h4>
                         <div class="grid grid-cols-3 gap-4">
-                            <div><label class="block text-xs font-bold text-indigo-700 mb-1">买量消耗与新增 <span>±%</span></label><input type="range" id="vol_new" min="0" max="50" value="15" class="w-full" oninput="document.getElementById('vol_new_val').innerText=this.value+'%'"><div class="text-center font-mono text-sm" id="vol_new_val">15%</div></div>
-                            <div><label class="block text-xs font-bold text-indigo-700 mb-1">大盘活跃(DAU) <span>±%</span></label><input type="range" id="vol_act" min="0" max="30" value="8" class="w-full" oninput="document.getElementById('vol_act_val').innerText=this.value+'%'"><div class="text-center font-mono text-sm" id="vol_act_val">8%</div></div>
-                            <div><label class="block text-xs font-bold text-indigo-700 mb-1">大盘变现(营收) <span>±%</span></label><input type="range" id="vol_rev" min="0" max="40" value="12" class="w-full" oninput="document.getElementById('vol_rev_val').innerText=this.value+'%'"><div class="text-center font-mono text-sm" id="vol_rev_val">12%</div></div>
+                            <div><label class="block text-xs font-bold text-indigo-700 mb-1">买量消耗与新增 <span>±%</span></label><input type="range" id="vol_new" min="0" max="50" value="15" class="prod-input w-full" oninput="document.getElementById('vol_new_val').innerText=this.value+'%'"><div class="text-center font-mono text-sm" id="vol_new_val">15%</div></div>
+                            <div><label class="block text-xs font-bold text-indigo-700 mb-1">大盘活跃(DAU) <span>±%</span></label><input type="range" id="vol_act" min="0" max="30" value="8" class="prod-input w-full" oninput="document.getElementById('vol_act_val').innerText=this.value+'%'"><div class="text-center font-mono text-sm" id="vol_act_val">8%</div></div>
+                            <div><label class="block text-xs font-bold text-indigo-700 mb-1">大盘变现(营收) <span>±%</span></label><input type="range" id="vol_rev" min="0" max="40" value="12" class="prod-input w-full" oninput="document.getElementById('vol_rev_val').innerText=this.value+'%'"><div class="text-center font-mono text-sm" id="vol_rev_val">12%</div></div>
                         </div>
                     </div>
                 </div>
@@ -274,8 +296,36 @@
         </div>
     </div>
 
+    <!-- ==================== 参数存档库 Modal ==================== -->
+    <div id="preset-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    全局参数配置存档库
+                </h3>
+                <button onclick="closePresetModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 border-b border-slate-100 bg-amber-50/30">
+                <label class="block text-sm font-bold text-slate-700 mb-2">💾 将当前全链参数存为新方案：</label>
+                <div class="flex gap-3">
+                    <input type="text" id="preset-name" placeholder="例如：2026国庆激进导量方案" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none text-sm">
+                    <button onclick="savePreset()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-bold shadow-sm transition-colors whitespace-nowrap">
+                        保存快照
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-auto p-6 bg-slate-50/50">
+                <h4 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">📁 已保存的方案列表 (本地存储)</h4>
+                <div id="preset-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- 弹窗 -->
-    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl font-medium transition-all duration-300 opacity-0 scale-95 pointer-events-none z-50 flex items-center gap-3">
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl font-medium transition-all duration-300 opacity-0 scale-95 pointer-events-none z-[200] flex items-center gap-3">
         <span class="bg-emerald-500 rounded-full w-6 h-6 flex items-center justify-center text-sm">✓</span><span id="toast-msg">更新成功</span>
     </div>
 
@@ -294,18 +344,53 @@
         }
 
         // ==========================================
+        // 密码认证与初始化拦截
+        // ==========================================
+        function unlockSystem() {
+            const pwd = document.getElementById('sys-pwd').value;
+            if (pwd === '888888' || localStorage.getItem('sys_auth') === 'true') {
+                localStorage.setItem('sys_auth', 'true');
+                const screen = document.getElementById('login-screen');
+                screen.classList.add('fade-out');
+                setTimeout(() => {
+                    screen.classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    bootSystem();
+                }, 500);
+            } else {
+                const err = document.getElementById('login-error');
+                err.classList.remove('hidden');
+                setTimeout(()=> err.classList.add('hidden'), 2000);
+            }
+        }
+
+        function checkAuthOnLoad() {
+            if (localStorage.getItem('sys_auth') === 'true') {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                bootSystem();
+            }
+        }
+
+        // ==========================================
         // 阶一：完全重构的投放树状数据结构与交互
         // ==========================================
-        let adData = {
-            'and': [
-                { id: 'and_c1', name: '广点通', mats: [ { name: '头条买量计划A', spend: 8000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 }, { name: '头条买量计划B', spend: 8000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 } ] },
-                { id: 'and_c2', name: '巨量引擎', mats: [ { name: '抖音信息流计划', spend: 8000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 } ] }
-            ],
-            'ios': [
-                { id: 'ios_c1', name: 'Apple Search Ads', mats: [ { name: '品牌词搜索计划', spend: 10000, ecpm: 45, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.08 } ] },
-                { id: 'ios_c2', name: '巨量引擎', mats: [ { name: '抖音高潜计划', spend: 8000, ecpm: 45, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.08 } ] }
-            ]
-        };
+        let adData = {};
+        
+        function initAdData() {
+            if (Object.keys(adData).length === 0) {
+                adData = {
+                    'and': [
+                        { id: 'and_c1', name: '广点通', mats: [ { name: '买量计划A', spend: 8000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 }, { name: '买量计划B', spend: 8000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 } ] },
+                        { id: 'and_c2', name: '巨量引擎', mats: [ { name: '信息流计划', spend: 8000, ecpm: 30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.05 } ] }
+                    ],
+                    'ios': [
+                        { id: 'ios_c1', name: 'Apple Search Ads', mats: [ { name: '品牌词搜索', spend: 10000, ecpm: 45, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.08 } ] },
+                        { id: 'ios_c2', name: '巨量引擎', mats: [ { name: '高潜计划', spend: 8000, ecpm: 45, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: 0.08 } ] }
+                    ]
+                };
+            }
+        }
 
         function addAdChannel(p) {
             adData[p].push({ id: p+'_c'+Date.now(), name: '新增渠道', mats: [ { name: '默认素材计划', spend: 5000, ecpm: p==='ios'?45:30, ctr: 0.015, downRate: 0.8, regRate: 0.8, payRate: p==='ios'?0.08:0.05 } ] });
@@ -332,7 +417,6 @@
         function updateAdName(p, cIdx, mIdx, val) {
             if(mIdx === -1) adData[p][cIdx].name = val;
             else adData[p][cIdx].mats[mIdx].name = val;
-            // 仅重绘界面，不需要全链重算
             calculateAds();
         }
 
@@ -366,9 +450,7 @@
             const platforms = [{id:'and', name:'Android', bg:'text-emerald-700'}, {id:'ios', name:'iOS', bg:'text-blue-700'}];
             
             platforms.forEach(p => {
-                // 精准计算该平台需要的合并单元格数
-                let pRowSpan = 0;
-                adData[p.id].forEach(c => { pRowSpan += c.mats.length + 1; }); 
+                let pRowSpan = 0; adData[p.id].forEach(c => { pRowSpan += c.mats.length + 1; }); 
                 let pFirstRow = true;
                 
                 adData[p.id].forEach((c, cIdx) => {
@@ -377,21 +459,15 @@
                     
                     c.mats.forEach((item, mIdx) => {
                         cTotals.spend += item.spend; cTotals.newUsers += item.newUsers; cTotals.paidUsers += item.paidUsers;
-                        
                         html += `<tr class="hover:bg-slate-50 group font-mono">`;
                         
-                        // [平台列] 完美对齐与跨行
                         if (pFirstRow) {
                             html += `<td rowspan="${pRowSpan}" class="px-2 py-2 border-b border-r sticky-col z-[45] font-sans font-bold text-center align-middle w-20 bg-white shadow-[2px_0_5px_rgba(0,0,0,0.02)]" style="left:0; min-width:80px;">
-                                <div class="flex flex-col items-center justify-center gap-2">
-                                    <span class="${p.bg}">${p.name}</span>
-                                    <button onclick="addAdChannel('${p.id}')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded border border-slate-200 shadow-sm transition-colors">+ 新增渠道</button>
-                                </div>
-                            </td>`;
-                            pFirstRow = false;
+                                <div class="flex flex-col items-center justify-center gap-2"><span class="${p.bg}">${p.name}</span>
+                                <button onclick="addAdChannel('${p.id}')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded border border-slate-200 shadow-sm transition-colors">+ 新增渠道</button></div>
+                            </td>`; pFirstRow = false;
                         }
                         
-                        // [渠道列] 增加悬浮编辑与删减功能
                         if (mIdx === 0) {
                             html += `<td rowspan="${cRowSpan}" class="px-2 py-2 border-b border-r sticky-col z-[45] font-sans font-medium text-center align-middle bg-white w-32 shadow-[2px_0_5px_rgba(0,0,0,0.02)]" style="left:80px; min-width:120px;">
                                 <div class="flex flex-col items-center gap-1 group/ch">
@@ -403,7 +479,6 @@
                             </td>`;
                         }
 
-                        // [素材列] 增加悬浮增删功能
                         const prf = `'${p.id}', ${cIdx}, ${mIdx}`;
                         html += `
                             <td class="px-3 py-1 border-b border-r sticky-col z-40 font-sans bg-white shadow-[2px_0_5px_rgba(0,0,0,0.02)] w-48" style="left:200px; min-width:200px;">
@@ -415,9 +490,6 @@
                                     </div>
                                 </div>
                             </td>
-                        `;
-                        
-                        html += `
                             <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="100" class="ad-input w-20" value="${item.spend.toFixed(0)}" onchange="updateAdInput(${prf},'spend',this.value)"></td>
                             <td class="px-2 py-1 border-b bg-amber-50/30"><input type="number" step="1" class="ad-input w-16" value="${item.ecpm.toFixed(2)}" onchange="updateAdInput(${prf},'ecpm',this.value)"></td>
                             <td class="px-3 py-2 border-b text-right text-slate-500">${fmtI(item.impressions)}</td>
@@ -434,7 +506,6 @@
                         </tr>`;
                     });
                     
-                    // 小计行，底部加固与防塌陷
                     html += `
                         <tr class="bg-slate-100 font-bold text-slate-700 font-sans border-b-2 border-b-white">
                             <td class="px-3 py-2 border-r sticky-col z-40 text-center text-xs bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.02)] w-48" style="left:200px; min-width:200px;">渠道小计</td>
@@ -450,52 +521,24 @@
             tbody.innerHTML = html;
         }
 
-        // ==========================================
-        // 阶二与阶三基础逻辑保留 (增加明细表渲染)
-        // ==========================================
-        let opData = [], productData = [];
         let adCharts={}, opCharts={}, prodCharts={};
-
-        function renderOpTable() {
-            const tbody = document.getElementById('opTableBody');
-            if(!tbody || !opData.length) return;
-            // 里程碑关键节点
-            const keyDays = [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360];
-            let html = '';
-            keyDays.forEach(day => {
-                if(day > TOTAL_DAYS) return;
-                const r = opData[day-1];
-                if(!r) return;
-                html += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-3 py-2 border-b border-r font-bold text-slate-700 bg-slate-50">Day ${day}</td>
-                    <td class="px-3 py-2 border-b text-green-700">${fmtP(r.and.r)}%</td>
-                    <td class="px-3 py-2 border-b text-slate-600">${fmtI(r.and.act)}</td>
-                    <td class="px-3 py-2 border-b border-r font-medium ${r.and.roi>=1?'text-red-500':'text-slate-500'}">${fmtP(r.and.roi)}%</td>
-                    
-                    <td class="px-3 py-2 border-b text-blue-700">${fmtP(r.ios.r)}%</td>
-                    <td class="px-3 py-2 border-b text-slate-600">${fmtI(r.ios.act)}</td>
-                    <td class="px-3 py-2 border-b border-r font-medium ${r.ios.roi>=1?'text-red-500':'text-slate-500'}">${fmtP(r.ios.roi)}%</td>
-                    
-                    <td class="px-3 py-2 border-b font-bold text-purple-700 bg-purple-50/30">${fmtI(r.total.act)}</td>
-                    <td class="px-3 py-2 border-b text-purple-600 bg-purple-50/30">¥${fmtI(r.total.rev)}</td>
-                    <td class="px-3 py-2 border-b font-bold ${r.total.roi>=1?'text-red-600 bg-red-50/50':'text-slate-600 bg-purple-50/30'}">${fmtP(r.total.roi)}%</td>
-                </tr>`;
-            });
-            tbody.innerHTML = html;
-        }
-
-        // ==========================================
-        // 图表初始化与通用框架 (保持不变)
-        // ==========================================
+        
         function initCharts() {
-            adCharts.c1 = echarts.init(document.getElementById('adSpendUserChart'));
-            adCharts.c2 = echarts.init(document.getElementById('adCostChart'));
-            opCharts.dau = echarts.init(document.getElementById('opDauChart'));
-            opCharts.rev = echarts.init(document.getElementById('opRevChart'));
-            prodCharts.dau = echarts.init(document.getElementById('prodDauChart'));
-            prodCharts.roi = echarts.init(document.getElementById('prodRoiChart'));
+            const ad1 = document.getElementById('adSpendUserChart');
+            const ad2 = document.getElementById('adCostChart');
+            const op1 = document.getElementById('opDauChart');
+            const op2 = document.getElementById('opRevChart');
+            const pr1 = document.getElementById('prodDauChart');
+            const pr2 = document.getElementById('prodRoiChart');
+
+            if(ad1) adCharts.c1 = echarts.init(ad1);
+            if(ad2) adCharts.c2 = echarts.init(ad2);
+            if(op1) opCharts.dau = echarts.init(op1);
+            if(op2) opCharts.rev = echarts.init(op2);
+            if(pr1) prodCharts.dau = echarts.init(pr1);
+            if(pr2) prodCharts.roi = echarts.init(pr2);
         }
+        
         function safeResize(charts) { Object.values(charts).forEach(c => { if(c) c.resize(); }); }
         
         function switchTab(tab) {
@@ -527,6 +570,26 @@
             const cOpts = { tooltip: {trigger:'axis'}, legend: {top:0}, grid: {left:'3%',right:'3%',bottom:'5%',containLabel:true} };
             adCharts.c1.setOption({...cOpts, xAxis: {type:'category', data:xData}, yAxis:[{name:'消耗',type:'value'},{name:'新增',type:'value'}], series:[{name:'消耗',type:'bar',data:spend,itemStyle:{color:'#f59e0b',borderRadius:[4,4,0,0]}},{name:'新增',type:'line',yAxisIndex:1,data:nUsers,itemStyle:{color:'#10b981'},smooth:true,lineStyle:{width:3}}]});
             adCharts.c2.setOption({...cOpts, xAxis: {type:'category', data:xData}, yAxis:{name:'成本',type:'value'}, series:[{name:'CPA',type:'bar',data:cpa,itemStyle:{color:'#3b82f6',borderRadius:[4,4,0,0]}},{name:'CPP',type:'bar',data:cpp,itemStyle:{color:'#8b5cf6',borderRadius:[4,4,0,0]}}]});
+        }
+
+        let opData = [], productData = [];
+        
+        function syncToOpParams() {
+            if (!isSyncEnabled || !window.adTotals) return;
+            const pts = window.adTotals.pTotals;
+            ['and', 'ios'].forEach(p => {
+                const elU = document.getElementById(`${p}_users`);
+                const elC = document.getElementById(`${p}_cost`);
+                const elP = document.getElementById(`${p}_init_paid_rate`);
+                if(elU) elU.value = Math.round(pts[p].newUsers);
+                if(elC) elC.value = Math.round(pts[p].spend);
+                if(elP) elP.value = (pts[p].newUsers > 0 ? (pts[p].paidUsers / pts[p].newUsers) * 100 : 0).toFixed(2);
+                
+                const arppu = parseFloat(document.getElementById(`${p}_init_arppu`)?.value) || 1;
+                const pRate = parseFloat(elP?.value) / 100 || 0;
+                const elA = document.getElementById(`${p}_init_arpu`);
+                if(elA) elA.value = (pRate * arppu).toFixed(2);
+            });
         }
 
         function calculateOpBase() {
@@ -574,6 +637,33 @@
             renderOpTable();
         }
 
+        function renderOpTable() {
+            const tbody = document.getElementById('opTableBody');
+            if(!tbody || !opData.length) return;
+            const keyDays = [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360];
+            let html = '';
+            keyDays.forEach(day => {
+                if(day > TOTAL_DAYS) return;
+                const r = opData[day-1]; if(!r) return;
+                html += `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-3 py-2 border-b border-r font-bold text-slate-700 bg-slate-50">Day ${day}</td>
+                    <td class="px-3 py-2 border-b text-green-700">${fmtP(r.and.r)}%</td>
+                    <td class="px-3 py-2 border-b text-slate-600">${fmtI(r.and.act)}</td>
+                    <td class="px-3 py-2 border-b border-r font-medium ${r.and.roi>=1?'text-red-500':'text-slate-500'}">${fmtP(r.and.roi)}%</td>
+                    
+                    <td class="px-3 py-2 border-b text-blue-700">${fmtP(r.ios.r)}%</td>
+                    <td class="px-3 py-2 border-b text-slate-600">${fmtI(r.ios.act)}</td>
+                    <td class="px-3 py-2 border-b border-r font-medium ${r.ios.roi>=1?'text-red-500':'text-slate-500'}">${fmtP(r.ios.roi)}%</td>
+                    
+                    <td class="px-3 py-2 border-b font-bold text-purple-700 bg-purple-50/30">${fmtI(r.total.act)}</td>
+                    <td class="px-3 py-2 border-b text-purple-600 bg-purple-50/30">¥${fmtI(r.total.rev)}</td>
+                    <td class="px-3 py-2 border-b font-bold ${r.total.roi>=1?'text-red-600 bg-red-50/50':'text-slate-600 bg-purple-50/30'}">${fmtP(r.total.roi)}%</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
         function renderOpCharts() {
             if(!opData.length || !opCharts.dau) return;
             const allDays = opData.map(d => `Day ${d.day}`);
@@ -584,16 +674,19 @@
             opCharts.rev.setOption({...opts, xAxis: {type:'category', boundaryGap:false, data:allDays}, yAxis:{name:'基准流水'}, series:[{name:'大盘累收',type:'line',smooth:true,showSymbol:false,itemStyle:{color:'#8b5cf6'},areaStyle:{opacity:0.2},data:revT}]});
         }
 
-        function calculateAndRenderOp() { calculateOpBase(); showToast("二阶底座更新成功"); }
+        function calculateAndRenderOp() { calculateOpBase(); showToast("二阶底座基准更新成功"); }
 
         function triggerFullChainUpdate() {
             calculateAds();
             if (isSyncEnabled && window.adTotals) {
                 ['and', 'ios'].forEach(p => {
                     const pts = window.adTotals.pTotals;
-                    document.getElementById(`${p}_users`).value = Math.round(pts[p].newUsers);
-                    document.getElementById(`${p}_cost`).value = Math.round(pts[p].spend);
-                    document.getElementById(`${p}_init_paid_rate`).value = (pts[p].newUsers > 0 ? (pts[p].paidUsers / pts[p].newUsers) * 100 : 0).toFixed(2);
+                    const elU = document.getElementById(`${p}_users`);
+                    if(elU) elU.value = Math.round(pts[p].newUsers);
+                    const elC = document.getElementById(`${p}_cost`);
+                    if(elC) elC.value = Math.round(pts[p].spend);
+                    const elP = document.getElementById(`${p}_init_paid_rate`);
+                    if(elP) elP.value = (pts[p].newUsers > 0 ? (pts[p].paidUsers / pts[p].newUsers) * 100 : 0).toFixed(2);
                 });
             }
             calculateOpBase();
@@ -607,63 +700,12 @@
                 const el = document.getElementById(id);
                 if(el) { el.readOnly = isSyncEnabled; el.classList.toggle('bg-emerald-50', isSyncEnabled); el.classList.toggle('text-emerald-700', isSyncEnabled); }
             });
-            if(isSyncEnabled) { badge.classList.remove('hidden'); showToast("联动开启！"); triggerFullChainUpdate(); } 
-            else { badge.classList.add('hidden'); }
+            if(isSyncEnabled) { if(badge) badge.classList.remove('hidden'); showToast("联动开启！"); triggerFullChainUpdate(); } 
+            else { if(badge) badge.classList.add('hidden'); }
         }
         
-        function exportAllToExcel() {
-            if (typeof XLSX === 'undefined') {
-                showToast("⚠️ Excel 导出库尚未加载完成，请稍后再试。");
-                return;
-            }
-            try {
-                showToast("⏳ 正在生成 Excel 文件...");
-                const wb = XLSX.utils.book_new();
-                
-                // 1. 导出投放明细 (一阶)
-                let adExportData = [['平台', '渠道', '素材计划', '单日总消耗(¥)', 'eCPM(¥)', '曝光量', 'CTR', '点击量', '下载率', '下载量', '注册率', '单日新增', 'CPA成本(¥)', '初始付费率', '新增付费', 'CPP成本(¥)']];
-                ['and', 'ios'].forEach(p => {
-                    const pName = p === 'and' ? 'Android' : 'iOS';
-                    adData[p].forEach(c => {
-                        c.mats.forEach(m => {
-                            adExportData.push([ pName, c.name, m.name, m.spend, m.ecpm, m.impressions, m.ctr, m.clicks, m.downRate, m.clicks*m.downRate, m.regRate, m.newUsers, m.cpa, m.payRate, m.paidUsers, m.cpp ]);
-                        });
-                    });
-                });
-                const wsAds = XLSX.utils.aoa_to_sheet(adExportData);
-                XLSX.utils.book_append_sheet(wb, wsAds, "一阶_投放素材明细");
-
-                // 2. 导出单批次节点衰减 (二阶)
-                if (opData && opData.length > 0) {
-                    let opExportData = [['留存天数', 'And留存率', 'And活跃DAU', 'And累计ROI', 'iOS留存率', 'iOS活跃DAU', 'iOS累计ROI', '大盘总DAU', '大盘单日营收(¥)', '大盘累计ROI']];
-                    opData.forEach(r => {
-                        opExportData.push([ r.day, r.and.r, r.and.act, r.and.roi, r.ios.r, r.ios.act, r.ios.roi, r.total.act, r.total.rev, r.total.roi ]);
-                    });
-                    const wsOp = XLSX.utils.aoa_to_sheet(opExportData);
-                    XLSX.utils.book_append_sheet(wb, wsOp, "二阶_单批次衰减基准");
-                }
-
-                // 3. 导出大盘沙盘 (三阶)
-                if (productData && productData.length > 0) {
-                    let prodExportData = [['日历日期', '演进天数', '当日大盘新增', '大盘总DAU', '当日流水收入(¥)', '累计总耗资(¥)', '累计总流水(¥)', '实盘ROI', 'And_DAU', 'And累计流水(¥)', 'And_ROI', 'iOS_DAU', 'iOS累计流水(¥)', 'iOS_ROI']];
-                    productData.forEach(r => {
-                        prodExportData.push([ r.date, r.d, r.t.n, r.t.act, r.t.rev, r.t.cc, r.t.cr, r.t.roi, r.a.act, r.a.cr, r.a.roi, r.i.act, r.i.cr, r.i.roi ]);
-                    });
-                    const wsProd = XLSX.utils.aoa_to_sheet(prodExportData);
-                    XLSX.utils.book_append_sheet(wb, wsProd, "三阶_大盘真实沙盘");
-                }
-
-                // 执行下载
-                XLSX.writeFile(wb, `全链路商业化推演数据_${new Date().toISOString().slice(0,10)}.xlsx`);
-                setTimeout(() => showToast("✅ Excel 导出成功！"), 500);
-            } catch (e) {
-                console.error(e);
-                showToast("❌ 导出失败，请检查控制台。");
-            }
-        }
-
-        // Product Sandbox logic remains unchanged (only calling to ensure working)
         function getRandomNoise(percentStr) { const vol = parseFloat(percentStr) / 100 || 0; return vol === 0 ? 1 : 1 + (Math.random() * 2 - 1) * vol; }
+        
         function calculateProductSandBox() {
             if(!opData.length) return;
             const startDStr = document.getElementById('prod_start_date').value;
@@ -699,7 +741,7 @@
             productData.forEach(r => {
                 html += `<tr class="hover:bg-slate-100/80 transition-colors">
                     <td class="px-3 py-2 border-r font-medium text-slate-700 bg-slate-50 text-center sticky-col border-b z-20 font-sans" style="left:0; min-width:80px;">${r.date}</td>
-                    <td class="px-2 py-2 border-r text-slate-500 bg-slate-50 text-center sticky-col border-b z-20 font-sans shadow-[2px_0_5px_rgba(0,0,0,0.02)]" style="left:80px; min-width:60px;">D${r.d}</td>
+                    <td class="px-2 py-2 border-r text-slate-500 bg-slate-50 text-center sticky-col border-b z-20 font-sans shadow-[2px_0_5px_rgba(0,0,0,0.02)]" style="left:100px; min-width:60px;">D${r.d}</td>
                     <td class="px-3 py-2 text-right border-b font-bold text-orange-600 bg-orange-50/20">${fmtI(r.t.n)}</td>
                     <td class="px-3 py-2 text-right border-b font-bold text-orange-800 bg-orange-50/20">${fmtI(r.t.act)}</td>
                     <td class="px-3 py-2 text-right border-b text-slate-700">¥${fmtM(r.t.rev)}</td>
@@ -727,12 +769,102 @@
             prodCharts.roi.setOption({...opts, xAxis:{type:'category', data:xData}, yAxis:[{name:'累计流水',type:'value'},{name:'ROI (%)',type:'value',min:0}], series: [ { name:'累计总流水', type:'line', smooth:false, showSymbol:false, itemStyle:{color:'#10b981'}, lineStyle:{width:3}, areaStyle:{color:'rgba(16,185,129,0.1)'}, data:tCr }, { name:'累计总耗资', type:'line', smooth:false, showSymbol:false, itemStyle:{color:'#ef4444'}, lineStyle:{width:2, type:'dashed'}, data:tCc }, { name:'实盘 ROI', type:'line', yAxisIndex:1, smooth:false, showSymbol:false, itemStyle:{color:'#f97316'}, data:tRoi, markLine: { data: [{yAxis: 100, name: '100%回本线'}], itemStyle:{color:'#dc2626'}, label:{formatter:'回本线 {c}%', position:'insideEndTop'} } } ]});
         }
 
-        window.onload = function() {
-            document.getElementById('prod_start_date').value = new Date().toISOString().split('T')[0];
+        // ==========================================
+        // 全盘配置与存档库系统 (Preset Manager)
+        // ==========================================
+        function openPresetModal() { document.getElementById('preset-modal').classList.remove('hidden'); renderPresetList(); }
+        function closePresetModal() { document.getElementById('preset-modal').classList.add('hidden'); }
+        function savePreset() {
+            const name = document.getElementById('preset-name').value.trim();
+            if(!name) return showToast('⚠️ 请输入存档名称');
+            const state = { adData: JSON.parse(JSON.stringify(adData)), opInputs: {}, prodInputs: {}, sync: document.getElementById('syncToggle').checked };
+            document.querySelectorAll('.op-input').forEach(el => state.opInputs[el.id] = el.value);
+            document.querySelectorAll('.prod-input').forEach(el => state.prodInputs[el.id] = el.value);
+            let presets = JSON.parse(localStorage.getItem('sys_presets') || '[]');
+            presets.unshift({ id: Date.now(), name, time: new Date().toLocaleString(), state });
+            localStorage.setItem('sys_presets', JSON.stringify(presets));
+            document.getElementById('preset-name').value = ''; renderPresetList(); showToast('✅ 存档成功！');
+        }
+
+        function loadPreset(id) {
+            let presets = JSON.parse(localStorage.getItem('sys_presets') || '[]'); let p = presets.find(x => x.id === id); if(!p) return;
+            adData = p.state.adData; 
+            Object.keys(p.state.opInputs).forEach(k => { const el = document.getElementById(k); if(el) el.value = p.state.opInputs[k]; });
+            Object.keys(p.state.prodInputs).forEach(k => { const el = document.getElementById(k); if(el) el.value = p.state.prodInputs[k]; });
+            const syncEl = document.getElementById('syncToggle');
+            if (syncEl.checked !== p.state.sync) { syncEl.checked = p.state.sync; toggleSync(); }
+            triggerFullChainUpdate(); closePresetModal(); showToast(`📂 成功加载配置：${p.name}`);
+        }
+
+        function deletePreset(id) {
+            if(!confirm("确定要删除这条参数存档吗？")) return;
+            let presets = JSON.parse(localStorage.getItem('sys_presets') || '[]');
+            presets = presets.filter(x => x.id !== id); localStorage.setItem('sys_presets', JSON.stringify(presets)); renderPresetList();
+        }
+
+        function renderPresetList() {
+            const container = document.getElementById('preset-list');
+            let presets = JSON.parse(localStorage.getItem('sys_presets') || '[]');
+            if (presets.length === 0) return container.innerHTML = `<div class="text-center text-slate-400 py-6 text-sm">暂无存档记录，请在上方保存当前配置。</div>`;
+            let html = '';
+            presets.forEach(p => {
+                html += `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center group">
+                    <div><div class="font-bold text-slate-800">${p.name}</div><div class="text-xs text-slate-400 mt-1">保存时间: ${p.time} | 状态: ${p.state.sync?'全链联动':'分模块独立'}</div></div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onclick="loadPreset(${p.id})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">读取配置</button><button onclick="deletePreset(${p.id})" class="text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">删除</button></div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function exportAllToExcel() {
+            if (typeof XLSX === 'undefined') return showToast("⚠️ Excel 导出库加载中，请稍候。");
+            try {
+                showToast("⏳ 正在生成多表全盘 Excel...");
+                const wb = XLSX.utils.book_new();
+                let adExportData = [['平台', '渠道', '素材计划', '单日总消耗(¥)', 'eCPM(¥)', '曝光量', 'CTR', '点击量', '下载率', '下载量', '注册率', '单日新增', 'CPA成本(¥)', '初始付费率', '新增付费', 'CPP成本(¥)']];
+                ['and', 'ios'].forEach(p => { adData[p].forEach(c => { c.mats.forEach(m => {
+                    adExportData.push([ p==='and'?'Android':'iOS', c.name, m.name, m.spend, m.ecpm, m.impressions, m.ctr, m.clicks, m.downRate, m.clicks*m.downRate, m.regRate, m.newUsers, m.cpa, m.payRate, m.paidUsers, m.cpp ]);
+                });});});
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(adExportData), "一阶_投放素材明细");
+                if (opData.length > 0) {
+                    let opExportData = [['留存天数', 'And留存率', 'And活跃DAU', 'And累计ROI', 'iOS留存率', 'iOS活跃DAU', 'iOS累计ROI', '大盘总DAU', '大盘单日营收(¥)', '大盘累计ROI']];
+                    opData.forEach(r => opExportData.push([ r.day, r.and.r, r.and.act, r.and.roi, r.ios.r, r.ios.act, r.ios.roi, r.total.act, r.total.rev, r.total.roi ]));
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(opExportData), "二阶_单批次基准");
+                }
+                if (productData.length > 0) {
+                    let prodExportData = [['日历日期', '演进天数', '当日大盘新增', '大盘总DAU', '当日流水收入(¥)', '累计总耗资(¥)', '累计总流水(¥)', '实盘ROI', 'And_DAU', 'And累计流水(¥)', 'And_ROI', 'iOS_DAU', 'iOS累计流水(¥)', 'iOS_ROI']];
+                    productData.forEach(r => prodExportData.push([ r.date, r.d, r.t.n, r.t.act, r.t.rev, r.t.cc, r.t.cr, r.t.roi, r.a.act, r.a.cr, r.a.roi, r.i.act, r.i.cr, r.i.roi ]));
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(prodExportData), "三阶_大盘真实沙盘");
+                }
+                XLSX.writeFile(wb, `全链路商业化推演数据_${new Date().toISOString().slice(0,10)}.xlsx`);
+            } catch (e) { showToast("❌ 导出失败"); }
+        }
+
+        // 核心挂载执行流
+        function bootSystem() {
             initCharts();
+            document.querySelectorAll('.op-input').forEach(inp => inp.addEventListener('input', () => {
+                ['and', 'ios'].forEach(p => {
+                    const pdRate = parseFloat(document.getElementById(`${p}_init_paid_rate`)?.value)/100||0;
+                    if (inp.id.includes('init_paid_rate') || inp.id.includes('init_arppu')) {
+                        const eA = document.getElementById(`${p}_init_arpu`);
+                        if(eA) eA.value = (pdRate * (parseFloat(document.getElementById(`${p}_init_arppu`)?.value)||0)).toFixed(2);
+                    } else if (inp.id.includes('init_arpu')) {
+                        const eP = document.getElementById(`${p}_init_paid_rate`);
+                        if(eP) eP.value = (((parseFloat(document.getElementById(`${p}_init_arpu`)?.value)||0) / (parseFloat(document.getElementById(`${p}_init_arppu`)?.value)||1)) * 100).toFixed(2);
+                    }
+                });
+            }));
+            
+            initAdData();
             calculateAds();
             calculateOpBase();
             switchTab('ads');
+        }
+
+        window.onload = function() {
+            document.getElementById('prod_start_date').value = new Date().toISOString().split('T')[0];
+            checkAuthOnLoad();
         };
     </script>
 </body>
